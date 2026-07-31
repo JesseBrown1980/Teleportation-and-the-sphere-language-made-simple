@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "tools" / "build_public_artifacts.py"
 NLEVEL_GENERATOR_PATH = ROOT / "tools" / "build_nlevel_outward.py"
+SPREAD_GENERATOR_PATH = ROOT / "tools" / "build_word_flowe_spread.py"
 
 
 def load_builder(name: str, path: Path):
@@ -28,6 +29,7 @@ def load_builder(name: str, path: Path):
 
 builder = load_builder("sphere_build", GENERATOR_PATH)
 nlevel = load_builder("sphere_nlevel_build", NLEVEL_GENERATOR_PATH)
+spread = load_builder("sphere_spread_build", SPREAD_GENERATOR_PATH)
 
 
 TEXT_SUFFIXES = {".flowe", ".hbi", ".hbp", ".md", ".py", ".rs", ".sha256", ".svg", ".toml", ".yml", ".yaml"}
@@ -101,7 +103,7 @@ def verify_hbi(module, label: str) -> None:
 
 def main() -> None:
     expected: dict[Path, bytes] = {}
-    for module in (builder, nlevel):
+    for module in (builder, nlevel, spread):
         for path, data in module.artifacts().items():
             if path in expected and expected[path] != data:
                 fail("ARTIFACT_COLLISION:" + path.relative_to(ROOT).as_posix())
@@ -114,6 +116,9 @@ def main() -> None:
         builder.FLOWE_PATH: "70cf8a98e00f96f76c1159424e00cba3aa75b90d823bffbcb72fdcf0b573e91a",
         builder.HBP_PATH: "4f1abc51460b0d9f7264ac33adea40498db842a37820bb7c69c22f2229a552fe",
         builder.HBI_PATH: "cb8e66188368614750971c34c5eb06cda4269a15d02e2bd3302545e9ca3231be",
+        nlevel.FLOWE_PATH: "e6741baba534ca2566f50305f5611449d97867917110b6eade803f8ab154d285",
+        nlevel.HBP_PATH: "c2380f65e6bb57694193969c0e9c7f8a4f8140bafdb2650f603e989f74c70d86",
+        nlevel.HBI_PATH: "b895576e70f77346fc23a8a189f0cd859a72339076737984c05f21d3bb968b58",
     }
     for path, digest in stable_v1.items():
         if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
@@ -180,6 +185,19 @@ def main() -> None:
     ]
     if spacing_occurrences != ["books/JESSE-BEHCS-NAMING-REPORT.md"]:
         fail("EAST_SPACING_SPIN_OCCURRENCE")
+    spread_marker = (
+        b"CONTINUE greater and greater Callings and calmings increasing go. "
+        + b"Self reducing go SPREAD the WORD AND FLOWe"
+    )
+    spread_occurrences = [
+        path.relative_to(ROOT).as_posix()
+        for path in all_files
+        for _ in range(path.read_bytes().count(spread_marker))
+    ]
+    if spread_occurrences != [
+        "books/LAW-INCREASING-CALLINGS-CALMINGS-WORD-FLOWE-SPREAD.md"
+    ]:
+        fail("SPREAD_OPERATOR_OCCURRENCE")
 
     if any(path.suffix.lower() == ".json" for path in all_files):
         fail("SOURCE_JSON_PRESENT")
@@ -200,6 +218,7 @@ def main() -> None:
 
     verify_hbi(builder, "V1")
     verify_hbi(nlevel, "NLEVEL")
+    verify_hbi(spread, "SPREAD")
     try:
         root = ET.fromstring(builder.SVG_PATH.read_bytes())
     except ET.ParseError as exc:
@@ -275,11 +294,138 @@ def main() -> None:
     if len(positions) != 160 or any(not (0 < x < 2048 and 0 < y < 2048) for x, y in positions):
         fail("NLEVEL_SVG_POSITION")
 
+    spread_flowe = spread.artifacts()[spread.FLOWE_PATH]
+    spread_rows = spread.parse_rows(spread_flowe)
+    spread.validate(
+        spread_rows,
+        spread.canonical_bytes(spread.LAW_PATH),
+        spread.canonical_bytes(spread.V1_FLOWE_PATH),
+        spread.canonical_bytes(spread.BASE_FLOWE_PATH),
+        spread.canonical_bytes(spread.BUILDER_PATH),
+    )
+    spread_tags = Counter(tag for tag, _, _ in spread_rows)
+    if (
+        len(spread_rows) != 2_738
+        or spread_tags["PARENT"] != 2
+        or spread_tags["ROUND"] != 2
+        or spread_tags["ANCHOR"] != 5
+        or spread_tags["CELL_REF"] != 160
+    ):
+        fail("SPREAD_CORE_COUNTS")
+    spread_events = [
+        (tag, fields)
+        for tag, fields, _ in spread_rows
+        if tag in spread.EVENT_KINDS
+    ]
+    if len(spread_events) != 2_560:
+        fail("SPREAD_EVENT_TOTAL")
+    for kind in spread.EVENT_KINDS:
+        ledger = [fields for tag, fields in spread_events if tag == kind]
+        if len(ledger) != 320:
+            fail("SPREAD_EVENT_COUNT:" + kind)
+        coverage = {(int(fields["round"]), int(fields["q"])) for fields in ledger}
+        if coverage != {
+            (growth_round, q)
+            for growth_round in (1, 2)
+            for q in range(160)
+        }:
+            fail("SPREAD_ROUND_Q_COVERAGE:" + kind)
+        if any(
+            fields["n_open"] != "1"
+            or fields["instant_address"] != "1"
+            or fields["elapsed_measurement_present"] != "0"
+            or fields["identity_exchange"] != "0"
+            or fields["source_retained"] != "1"
+            for fields in ledger
+        ):
+            fail("SPREAD_EVENT_BOUNDARY:" + kind)
+    anchors = {
+        fields["id"]: fields["meaning"]
+        for tag, fields, _ in spread_rows
+        if tag == "ANCHOR"
+    }
+    if anchors != {
+        "n_e": "AETHER_E_CENTER",
+        "n_flowe_target": "OUTWARD_FLOWE_TARGET",
+        "n_u": "U_CONNECTION",
+        "n_o0o": "O0O_SPHERE",
+        "n_word": "WORD_SOURCE",
+    }:
+        fail("SPREAD_ANCHORS")
+    word_rows = [fields for tag, fields in spread_events if tag == "WORD_SPREAD"]
+    flowe_rows = [fields for tag, fields in spread_events if tag == "FLOWE_SPREAD"]
+    if {fields["from"] for fields in word_rows} != {"n_word"} or {
+        fields["spread"] for fields in word_rows
+    } != {"WORD"}:
+        fail("SPREAD_WORD_SOURCE")
+    if {fields["from"] for fields in flowe_rows} != {"n_flowe_target"} or {
+        fields["spread"] for fields in flowe_rows
+    } != {"FLOWE"}:
+        fail("SPREAD_FLOWE_SOURCE")
+    self_rows = [
+        fields for tag, fields in spread_events if tag == "SELF_REDUCTION_GROWTH"
+    ]
+    if any(
+        fields["self_reduction"] != "1"
+        or fields["deletion"] != "0"
+        or fields["identity_exchange"] != "0"
+        or fields["source_retained"] != "1"
+        for fields in self_rows
+    ):
+        fail("SPREAD_SELF_REDUCTION")
+    event_ids = [fields["id"] for _, fields in spread_events]
+    if len(set(event_ids)) != len(event_ids):
+        fail("SPREAD_EVENT_ID_COLLISION")
+
+    manifest_lines = spread.MANIFEST_PATH.read_text(encoding="utf-8").splitlines()
+    if len(manifest_lines) != 8:
+        fail("SPREAD_MANIFEST_COUNT")
+    for manifest_line in manifest_lines:
+        digest, relative = manifest_line.split("  ", 1)
+        path = ROOT / relative
+        if (
+            not path.is_file()
+            or len(digest) != 64
+            or hashlib.sha256(path.read_bytes()).hexdigest() != digest
+        ):
+            fail("SPREAD_MANIFEST_HASH:" + relative)
+
+    try:
+        spread_svg = ET.fromstring(spread.SVG_PATH.read_bytes())
+    except ET.ParseError as exc:
+        fail("SPREAD_SVG_PARSE:" + str(exc))
+    if (
+        spread_svg.attrib.get("data-json") != "0"
+        or spread_svg.attrib.get("data-execution-authority") != "0"
+    ):
+        fail("SPREAD_SVG_BOUNDARY")
+    spread_svg_kinds = Counter(
+        element.attrib.get("data-kind") for element in spread_svg.iter()
+    )
+    for kind in spread.EVENT_KINDS:
+        if spread_svg_kinds[kind] != 320:
+            fail("SPREAD_SVG_EVENT_COUNT:" + kind)
+    spread_svg_cells = [
+        element
+        for element in spread_svg.iter(namespace + "circle")
+        if element.attrib.get("data-kind") == "CELL_REF"
+    ]
+    if len(spread_svg_cells) != 160:
+        fail("SPREAD_SVG_CELL_COUNT")
+    spread_rounds = Counter(
+        element.attrib.get("data-round")
+        for element in spread_svg.iter(namespace + "line")
+        if element.attrib.get("data-kind") in spread.EVENT_KINDS
+    )
+    if spread_rounds != Counter({"1": 1_280, "2": 1_280}):
+        fail("SPREAD_SVG_ROUND_COUNT")
+
     print(
         f"PUBLIC_VERIFY|PASS=1|files={len(all_files)}|source_occurrences=1"
         f"|hbp_rows={len(builder.HBP_PATH.read_bytes().splitlines())}"
         f"|nlevel_core_rows={len(nlevel_rows)}|nlevel_cells={len(cells)}"
         f"|nlevel_event_rows={sum(nlevel_tags[kind] for kind in nlevel.EVENT_KINDS)}"
+        f"|spread_core_rows={len(spread_rows)}|spread_event_rows={len(spread_events)}"
         "|secret_findings=0|json_files=0|execution_authority=0|json=0"
     )
 

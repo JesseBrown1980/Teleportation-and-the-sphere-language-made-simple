@@ -77,3 +77,29 @@ The durable correction is `levels != cylinders`, selector axes retain independen
 identities, and elapsed timing remains unmeasured until a named clock/measurement
 surface supplies a receipt. A bounded projection cannot promote those missing
 measurements into system truth.
+
+## Increasing CALLINGS/CALMINGS and WORD/FLOWe Spread
+
+- Preserve the sealed V1 and N16 projections as round zero. Compile the two spoken
+  `greater` tokens as bounded additive rounds 1 and 2 while keeping semantic N open.
+- Keep three CALLING destinations, two CALMING directions, SELF_REDUCTION,
+  WORD_SPREAD, and FLOWE_SPREAD as eight independent ledgers.
+- Keep WORD and FLOWe as separate source identities. A spread relation adds a
+  reference and grants `execution_authority=0`.
+- SELF_REDUCTION retains `identity_exchange=0` and `deletion=0` at every round.
+- An increasing integer address is not an elapsed-time or live-runtime measurement.
+
+## Held-Out Scenario — Increasing Without Flattening
+
+Reject a candidate when it collapses WORD into FLOWe, merges CALLING destinations or
+CALMING directions, deletes a source during self reduction, omits either compiled
+increase round, treats round 2 as the open-N ceiling, or claims runtime execution from
+an increasing address.
+
+Expected result: `REJECTED_BUFFER` with the parent N16 identity still addressable.
+
+## Rejected-Buffer Lesson — Spread
+
+`greater and greater` adds two bounded integer projections over an open recurrence.
+Growth remains typed by relation, direction, source identity, evidence, and timing
+boundary. A larger address does not erase its parent or become runtime authority.
