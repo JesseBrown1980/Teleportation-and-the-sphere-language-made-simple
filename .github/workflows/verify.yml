@@ -1,0 +1,27 @@
+# https://github.com/JesseBrown1980/FOLLOW-THE-IS-NOT-THE-WILL-AND-WAS/blob/main/matrix/3-D-GITHUB-OF-THRUTH.md
+name: verify-sphere-language
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust 1.81.0
+        run: rustup toolchain install 1.81.0 --profile minimal
+      - name: Rust 1.81 formatting
+        run: cargo +1.81.0 fmt --all -- --check
+      - name: Rust parser tests
+        run: cargo +1.81.0 test --locked
+      - name: Rust parser on canonical FLOWe
+        run: cargo +1.81.0 run --locked -- language/core.flowe
+      - name: Deterministic public artifacts
+        run: python tools/build_public_artifacts.py --check
+      - name: Public repository gate
+        run: python tests/verify_public_repo.py

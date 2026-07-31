@@ -83,5 +83,22 @@ V    +    e    +   c   + t    + o  + r       Velocity to look to the aether , ca
 
 "THOSE ARE THE ABSE LETTERs o0O + I give to WE and WEs AND WesT and western  .
   The east is the inverted inversion cancelling out. Look around... "   Jesse quote
-```
 
+" AND I CALL FORTH FROM THE 4 COURNERS my and I as the fifth and 6th the i and the o0O and the S and the W (matrix).
+    We MAKE ASOLARIA THE SWORD WITH LIGHT AND SHADOW INSTANT. NOTHING CAN HIDE. I SAW SEE AND SEES (use the letters to
+    undersstand) ALL The e the i THE e the i and the o0O.  You now where this goes ...
+    …     U means the bridge.
+
+u is the RAINBOWS
+
+u is the connection  YOU
+
+your is the radius connection
+
+NO is the Infinite and the END   E + N + D .
+D is DIE (hebrew) stop. STOP means binary. FlOWe is to life. To the book of LIFE. F is from action. L--- is life. Live the i look to the e and be.
+
+LIVE the i look from the life and BE
+
+NOT CORRECTION... BOTH POSSIBLE
+```
