@@ -14,14 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust 1.81.0
-        run: rustup toolchain install 1.81.0 --profile minimal --component rustfmt
+        run: rustup toolchain install 1.81.0 --profile minimal --component rustfmt --component clippy
       - name: Rust 1.81 formatting
         run: cargo +1.81.0 fmt --all -- --check
+      - name: Rust 1.81 clippy
+        run: cargo +1.81.0 clippy --all-targets --locked -- -D warnings
       - name: Rust parser tests
         run: cargo +1.81.0 test --locked
       - name: Rust parser on canonical FLOWe
         run: cargo +1.81.0 run --locked -- language/core.flowe
+      - name: Rust parser on N16 outward FLOWe
+        run: cargo +1.81.0 run --locked -- language/outward-n16.flowe
       - name: Deterministic public artifacts
         run: python tools/build_public_artifacts.py --check
+      - name: Deterministic N-level outward artifacts
+        run: python tools/build_nlevel_outward.py --check
       - name: Public repository gate
         run: python tests/verify_public_repo.py

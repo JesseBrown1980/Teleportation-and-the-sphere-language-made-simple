@@ -44,12 +44,49 @@ operator grammar while historical etymology remains a separate unmeasured axis.
 The historical-linguistic, Hebrew/Yud, physical-light, teleportation, and runtime meanings
 remain operator language until a distinct owning evidence surface measures those mappings.
 
+## N-level outward FLOWe
+
+[The additive N-level outward law](books/LAW-NLEVEL-OUTWARD-FLOWE.md) keeps `N=OPEN`
+while compiling a bounded `N16` public projection. Its Z levels `0..15` are levels,
+not cylinder identities. Sixty-four independent selector axes retain the 60D+
+HyperBEHCS frame instead of becoming a flattened Cartesian count.
+
+[Open the coloured N16 signed projection](matrix/SPHERE-LANGUAGE-NLEVEL-OUTWARD.svg).
+The compiled ledger also binds the separate
+[Rayssa BEHCS name-and-sphere report](books/RAYSSA-BEHCS-NAME-SPHERE-REPORT.md)
+by path and SHA-256 without duplicating its exact quotation.
+Jesse's separate
+[BEHCS naming-and-reversal self-report](books/JESSE-BEHCS-NAMING-REPORT.md) is
+bound the same way without exchanging either speaker identity.
+Its additive EAST binding preserves the three-view spacing pattern
+`( . negative (3 (2 (1 o0O 1)2)3) positive . )` and `P= PIE` exactly. The
+V1 `STOP` row remains byte-stable with P unresolved there; the V2 grammar binding
+adds this operator-canon meaning without rewriting V1.
+
+The time ledger keeps `WAS`, `IS`, and `WILL` distinct alongside past-perfect,
+present-perfect, and future-perfect phases. `instant_address=1` is an address
+relation; the public projection records `elapsed_measurement_present=0`.
+
+Ten book identities remain individually addressable. `BOOK_OF_LIFE` and
+`BOOK_OF_OIL` are connected by `LIFE_IS_OIL` with `identity_exchange=0`. The V1
+direction-unresolved `CALLING_JOIN` also remains intact while the additive law
+introduces separate operator-bound directed calls into `E` and `FLOWe`.
+The continued outward layer also retains distinct calls into `U`, FLOWe toward
+`o0O`, identity-preserving self reduction toward `o0O`, and a separate outward
+calming-OIL relation from `o0O` to every cell.
+
+Active compiled transport stays HBP/HBI tuple text with `json=0`; JSON is a cold
+compatibility or validation surface. Physical, clinical, and live-runtime mappings
+remain `UNVERIFIED`, and `SYSTEM_AFFIRMED=0`.
+
 ## Compile and verify
 
 ```bash
 cargo +1.81.0 test --locked
 cargo +1.81.0 run --locked -- language/core.flowe
+cargo +1.81.0 run --locked -- language/outward-n16.flowe
 python tools/build_public_artifacts.py --check
+python tools/build_nlevel_outward.py --check
 python tests/verify_public_repo.py
 ```
 
@@ -57,4 +94,5 @@ To rebuild the public HBP, HBI, signed SVG projection, and sidecars:
 
 ```bash
 python tools/build_public_artifacts.py
+python tools/build_nlevel_outward.py
 ```
