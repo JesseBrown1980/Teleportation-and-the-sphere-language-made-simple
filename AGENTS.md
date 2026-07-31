@@ -28,3 +28,52 @@ https://github.com/JesseBrown1980/FOLLOW-THE-IS-NOT-THE-WILL-AND-WAS/blob/main/m
 - Keep credentials, private keys, cookies, private archaeology, and health data out
   of the repository. Public decoders require zero hidden account secrets.
 - Preserve candidates in reviewable Git history and use positive fail-closed gates.
+
+## N-Level Outward Additive Law
+
+- Preserve V1 and keep `N=OPEN`; `N16` is a bounded compiled projection with Z
+  levels `0..15`, not a semantic ceiling.
+- Keep 64 selector axes independent inside the 60D+ HyperBEHCS frame. Do not turn
+  a level range into cylinder identities or a Cartesian population count.
+- Preserve `WAS`, `IS`, `WILL`, past-perfect, present-perfect, and future-perfect
+  as separate time addresses. `instant_address=1` is an address relation and
+  `elapsed_measurement_present=0` leaves elapsed time unmeasured.
+- Keep all ten book nodes distinct. `LIFE_IS_OIL` is a relation with
+  `identity_exchange=0`, not a book-identity replacement.
+- Retain old `CALLING_JOIN` direction as unresolved. New directed calls into `E`
+  and `FLOWe` are separately operator-bound relations and do not rewrite V1 rows.
+- Keep `CALLING_INTO_U`, `FLOWE_TO_O0O`, and `SELF_REDUCTION` as separate additive
+  relation ledgers. Self reduction retains `identity_exchange=0` and `deletion=0`.
+- Keep `CALMING_OIL_OUTWARD` from o0O to each cell separate from `CALMING_OIL`
+  toward E; opposite roles do not exchange relation identity.
+- Keep Rayssa and Jesse report identities separate and bind each exact report by
+  speaker, path, and SHA-256; neither report becomes another `SOURCE` row.
+- Preserve `EAST_SPHERICAL_CORRECTION` as structured ease/spherical-ase, null,
+  `t(to action)`, point options, `±1/3`, six-view, and nested-o0O coordinates.
+  Reject the corrected-away flat `es+ase=t` form.
+- Treat spacing in `EAST_SPHERICAL_CORRECTION` as grammar data. Preserve three
+  spacing views, the outer grouping, the literal 45-character center pattern, its
+  ten space positions, the `1)2)3` adjacency, and `P= PIE` exactly. Whitespace
+  normalization must fail the held-out gate.
+- Treat every compiled tuple tag as a closed schema. Reject extra fields on control,
+  axis, node, book, level, token, boundary, and event rows, including a valid field
+  name attached to the wrong tag.
+- Keep active HBP/HBI transport tuple-based with `json=0`; JSON belongs to cold
+  compatibility or held-out validation surfaces.
+
+## Held-Out Scenario — Levels, Cylinders, Axes, and Timing
+
+Reject a candidate row when it does any of the following:
+
+- equates `Z=0..15` with sixteen cylinders;
+- multiplies independent selector axes into a flattened Cartesian object count; or
+- converts `instant_address=1` into an `elapsed=0` measurement.
+
+Expected result: `REJECTED_BUFFER` with fail-closed validation.
+
+## Rejected-Buffer Lesson
+
+The durable correction is `levels != cylinders`, selector axes retain independent
+identities, and elapsed timing remains unmeasured until a named clock/measurement
+surface supplies a receipt. A bounded projection cannot promote those missing
+measurements into system truth.
