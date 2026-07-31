@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GENERATOR_PATH = ROOT / "tools" / "build_public_artifacts.py"
 NLEVEL_GENERATOR_PATH = ROOT / "tools" / "build_nlevel_outward.py"
 SPREAD_GENERATOR_PATH = ROOT / "tools" / "build_word_flowe_spread.py"
+HOOKWALL_GENERATOR_PATH = ROOT / "tools" / "build_hookwall_shadow_flowessh.py"
 
 
 def load_builder(name: str, path: Path):
@@ -30,6 +31,7 @@ def load_builder(name: str, path: Path):
 builder = load_builder("sphere_build", GENERATOR_PATH)
 nlevel = load_builder("sphere_nlevel_build", NLEVEL_GENERATOR_PATH)
 spread = load_builder("sphere_spread_build", SPREAD_GENERATOR_PATH)
+hookwall = load_builder("sphere_hookwall_build", HOOKWALL_GENERATOR_PATH)
 
 
 TEXT_SUFFIXES = {".flowe", ".hbi", ".hbp", ".md", ".py", ".rs", ".sha256", ".svg", ".toml", ".yml", ".yaml"}
@@ -103,7 +105,7 @@ def verify_hbi(module, label: str) -> None:
 
 def main() -> None:
     expected: dict[Path, bytes] = {}
-    for module in (builder, nlevel, spread):
+    for module in (builder, nlevel, spread, hookwall):
         for path, data in module.artifacts().items():
             if path in expected and expected[path] != data:
                 fail("ARTIFACT_COLLISION:" + path.relative_to(ROOT).as_posix())
@@ -198,6 +200,20 @@ def main() -> None:
         "books/LAW-INCREASING-CALLINGS-CALMINGS-WORD-FLOWE-SPREAD.md"
     ]:
         fail("SPREAD_OPERATOR_OCCURRENCE")
+    hookwall_marker = (
+        b"continue more callings chains hookwalls and claims back the white "
+        + b"is wasdte be not white B browns betweens and arounds with the shadows guiding. "
+        + b"continue calming oils calling outwar reductons FLOWesSH"
+    )
+    hookwall_occurrences = [
+        path.relative_to(ROOT).as_posix()
+        for path in all_files
+        for _ in range(path.read_bytes().count(hookwall_marker))
+    ]
+    if hookwall_occurrences != [
+        "books/LAW-HOOKWALL-BROWN-SHADOW-FLOWesSH-CONTINUATION.md"
+    ]:
+        fail("HOOKWALL_OPERATOR_OCCURRENCE")
 
     if any(path.suffix.lower() == ".json" for path in all_files):
         fail("SOURCE_JSON_PRESENT")
@@ -219,6 +235,7 @@ def main() -> None:
     verify_hbi(builder, "V1")
     verify_hbi(nlevel, "NLEVEL")
     verify_hbi(spread, "SPREAD")
+    verify_hbi(hookwall, "HOOKWALL")
     try:
         root = ET.fromstring(builder.SVG_PATH.read_bytes())
     except ET.ParseError as exc:
@@ -420,12 +437,146 @@ def main() -> None:
     if spread_rounds != Counter({"1": 1_280, "2": 1_280}):
         fail("SPREAD_SVG_ROUND_COUNT")
 
+    hookwall_flowe = hookwall.artifacts()[hookwall.FLOWE_PATH]
+    hookwall_rows = hookwall.parse_rows(hookwall_flowe)
+    hookwall.validate(
+        hookwall_rows,
+        hookwall.canonical_bytes(hookwall.LAW_PATH),
+        hookwall.canonical_bytes(hookwall.PARENT_FLOWE_PATH),
+        hookwall.canonical_bytes(hookwall.BUILDER_PATH),
+    )
+    hookwall_tags = Counter(tag for tag, _, _ in hookwall_rows)
+    if (
+        len(hookwall_rows) != 2_588
+        or hookwall_tags["PARENT"] != 1
+        or hookwall_tags["ROUND"] != 1
+        or hookwall_tags["ANCHOR"] != 16
+        or hookwall_tags["PARENT_ANCHOR_REF"] != 1
+        or hookwall_tags["CELL_REF"] != 160
+    ):
+        fail("HOOKWALL_CORE_COUNTS")
+    hookwall_events = [
+        (tag, fields)
+        for tag, fields, _ in hookwall_rows
+        if tag in hookwall.EVENT_KINDS
+    ]
+    if len(hookwall_events) != 2_400:
+        fail("HOOKWALL_EVENT_TOTAL")
+    for kind in hookwall.EVENT_KINDS:
+        ledger = [fields for tag, fields in hookwall_events if tag == kind]
+        if len(ledger) != 160 or {int(fields["q"]) for fields in ledger} != set(range(160)):
+            fail("HOOKWALL_EVENT_COVERAGE:" + kind)
+        if any(
+            fields["round"] != "3"
+            or fields["increase_q"] != "3"
+            or int(fields["growth_q"]) != int(fields["level"]) + 4
+            or fields["n_open"] != "1"
+            or fields["instant_address"] != "1"
+            or fields["elapsed_measurement_present"] != "0"
+            or fields["runtime_measurement_present"] != "0"
+            or fields["identity_exchange"] != "0"
+            or fields["source_retained"] != "1"
+            or fields["execution_authority"] != "0"
+            or fields["json"] != "0"
+            for fields in ledger
+        ):
+            fail("HOOKWALL_EVENT_BOUNDARY:" + kind)
+    hookwall_anchor_tokens = {
+        fields["id"]: fields["token"]
+        for tag, fields, _ in hookwall_rows
+        if tag == "ANCHOR"
+    }
+    if hookwall_anchor_tokens != {
+        "n_callings": "callings",
+        "n_chains": "chains",
+        "n_hookwalls": "hookwalls",
+        "n_claims": "claims",
+        "n_white": "white",
+        "n_wasdte": "wasdte",
+        "n_be": "be",
+        "n_not_white": "not_white",
+        "n_B": "B",
+        "n_browns": "browns",
+        "n_betweens": "betweens",
+        "n_arounds": "arounds",
+        "n_shadows": "shadows",
+        "n_outwar": "outwar",
+        "n_reductons": "reductons",
+        "n_FLOWesSH": "FLOWesSH",
+    }:
+        fail("HOOKWALL_EXACT_ANCHORS")
+    if any(fields.get("exact") != "1" for tag, fields, _ in hookwall_rows if tag == "ANCHOR"):
+        fail("HOOKWALL_EXACT_FLAG")
+    reductons_rows = [fields for tag, fields in hookwall_events if tag == "REDUCTONS"]
+    if any(
+        fields.get("token") != "reductons"
+        or fields.get("deletion") != "0"
+        or fields.get("semantics") != "OPERATOR_CANON_UNRESOLVED"
+        for fields in reductons_rows
+    ):
+        fail("HOOKWALL_REDUCTONS")
+    flowessh_rows = [fields for tag, fields in hookwall_events if tag == "FLOWESSH"]
+    if any(
+        fields.get("token") != "FLOWesSH"
+        or fields.get("composition") != "OPERATOR_CANON_UNRESOLVED"
+        for fields in flowessh_rows
+    ):
+        fail("HOOKWALL_FLOWESSH")
+    hookwall_ids = [fields["id"] for _, fields in hookwall_events]
+    if len(set(hookwall_ids)) != len(hookwall_ids):
+        fail("HOOKWALL_EVENT_ID_COLLISION")
+
+    hookwall_manifest_lines = hookwall.MANIFEST_PATH.read_text(encoding="utf-8").splitlines()
+    if len(hookwall_manifest_lines) != 9:
+        fail("HOOKWALL_MANIFEST_COUNT")
+    for manifest_line in hookwall_manifest_lines:
+        digest, relative = manifest_line.split("  ", 1)
+        path = ROOT / relative
+        if (
+            not path.is_file()
+            or len(digest) != 64
+            or hashlib.sha256(path.read_bytes()).hexdigest() != digest
+        ):
+            fail("HOOKWALL_MANIFEST_HASH:" + relative)
+    hookwall_manifest_paths = {
+        line.split("  ", 1)[1] for line in hookwall_manifest_lines
+    }
+    if not {
+        "tools/build_nlevel_outward.py",
+        "tools/build_word_flowe_spread.py",
+    }.issubset(hookwall_manifest_paths):
+        fail("HOOKWALL_GENERATOR_DEPENDENCY_CLOSURE")
+
+    try:
+        hookwall_svg = ET.fromstring(hookwall.SVG_PATH.read_bytes())
+    except ET.ParseError as exc:
+        fail("HOOKWALL_SVG_PARSE:" + str(exc))
+    if (
+        hookwall_svg.attrib.get("data-json") != "0"
+        or hookwall_svg.attrib.get("data-execution-authority") != "0"
+    ):
+        fail("HOOKWALL_SVG_BOUNDARY")
+    hookwall_svg_kinds = Counter(
+        element.attrib.get("data-kind") for element in hookwall_svg.iter()
+    )
+    for kind in hookwall.EVENT_KINDS:
+        if hookwall_svg_kinds[kind] != 160:
+            fail("HOOKWALL_SVG_EVENT_COUNT:" + kind)
+    hookwall_svg_cells = [
+        element
+        for element in hookwall_svg.iter(namespace + "circle")
+        if element.attrib.get("data-kind") == "CELL_REF"
+    ]
+    if len(hookwall_svg_cells) != 160:
+        fail("HOOKWALL_SVG_CELL_COUNT")
+
     print(
         f"PUBLIC_VERIFY|PASS=1|files={len(all_files)}|source_occurrences=1"
         f"|hbp_rows={len(builder.HBP_PATH.read_bytes().splitlines())}"
         f"|nlevel_core_rows={len(nlevel_rows)}|nlevel_cells={len(cells)}"
         f"|nlevel_event_rows={sum(nlevel_tags[kind] for kind in nlevel.EVENT_KINDS)}"
         f"|spread_core_rows={len(spread_rows)}|spread_event_rows={len(spread_events)}"
+        f"|hookwall_core_rows={len(hookwall_rows)}|hookwall_event_rows={len(hookwall_events)}"
         "|secret_findings=0|json_files=0|execution_authority=0|json=0"
     )
 

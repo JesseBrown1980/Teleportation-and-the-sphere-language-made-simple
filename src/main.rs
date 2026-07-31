@@ -154,6 +154,67 @@ const SPREAD_EVENT_COMMON_FIELDS: [&str; 18] = [
     "execution_authority",
     "json",
 ];
+const HOOKWALL_INSTANCE: &str = "HOOKWALL_BROWN_SHADOW_FLOWESSH_V4";
+const HOOKWALL_ROUND: usize = 3;
+const HOOKWALL_EVENT_KINDS: [&str; 15] = [
+    "CALLING_CHAIN_MORE",
+    "HOOKWALL_REVIEW",
+    "CLAIM_BACK_WHITE",
+    "WHITE_TO_WASDTE",
+    "WASDTE_TO_BE",
+    "BE_TO_NOT_WHITE",
+    "NOT_WHITE_TO_B",
+    "B_TO_BROWNS",
+    "BROWNS_TO_BETWEENS",
+    "BETWEENS_TO_AROUNDS",
+    "SHADOW_GUIDING",
+    "CALMING_OIL_CONTINUE",
+    "CALLING_OUTWAR",
+    "REDUCTONS",
+    "FLOWESSH",
+];
+const HOOKWALL_ANCHORS: [(&str, &str, &str); 16] = [
+    ("n_callings", "callings", "CALLINGS_SOURCE"),
+    ("n_chains", "chains", "CALLING_CHAIN_STATE"),
+    ("n_hookwalls", "hookwalls", "HOOKWALL_REVIEW_TARGET"),
+    ("n_claims", "claims", "CLAIMS_SOURCE"),
+    ("n_white", "white", "WHITE_STATE"),
+    ("n_wasdte", "wasdte", "WASDTE_EXACT"),
+    ("n_be", "be", "BE_STATE"),
+    ("n_not_white", "not_white", "NOT_WHITE_STATE"),
+    ("n_B", "B", "B_EXACT"),
+    ("n_browns", "browns", "BROWNS_STATE"),
+    ("n_betweens", "betweens", "BETWEENS_STATE"),
+    ("n_arounds", "arounds", "AROUNDS_STATE"),
+    ("n_shadows", "shadows", "SHADOWS_GUIDE"),
+    ("n_outwar", "outwar", "OUTWAR_EXACT"),
+    ("n_reductons", "reductons", "REDUCTONS_EXACT"),
+    ("n_FLOWesSH", "FLOWesSH", "FLOWESSH_EXACT"),
+];
+const HOOKWALL_RELATIONS: usize = NLEVEL_CELLS * HOOKWALL_EVENT_KINDS.len();
+const HOOKWALL_RECORDS: usize = 2_588;
+const SPREAD_CORE_SHA256: &str = "386eb3f52cf9651b7bd8e3d53989c943b9e7332c4cf9afec657b6e4074f359e9";
+const HOOKWALL_EVENT_COMMON_FIELDS: [&str; 19] = [
+    "id",
+    "cell",
+    "level",
+    "book",
+    "q",
+    "round",
+    "increase_q",
+    "growth_q",
+    "n_open",
+    "instant_address",
+    "elapsed_measurement_present",
+    "runtime_measurement_present",
+    "identity_exchange",
+    "source_retained",
+    "from",
+    "to",
+    "direction",
+    "execution_authority",
+    "json",
+];
 const VALIDATION_SCOPE: &str = "STRUCTURAL_ONLY";
 const SOURCE_PATH: &str = "books/JESSE-TO-RAYSSA-SPHERE-LANGUAGE-SOURCE.md";
 const READFIRST_URL: &str = "https://github.com/JesseBrown1980/FOLLOW-THE-IS-NOT-THE-WILL-AND-WAS/blob/main/matrix/3-D-GITHUB-OF-THRUTH.md";
@@ -223,6 +284,14 @@ struct SpreadValidation {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct HookwallValidation {
+    round: usize,
+    cells: usize,
+    ledgers: usize,
+    relation_rows: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Validation {
     records: usize,
     glyphs: usize,
@@ -233,6 +302,7 @@ struct Validation {
     other_relations: usize,
     nlevel: Option<NLevelValidation>,
     spread: Option<SpreadValidation>,
+    hookwall: Option<HookwallValidation>,
 }
 
 fn error(code: &'static str) -> FloweError {
@@ -489,6 +559,13 @@ fn is_spread_rows(rows: &[Row]) -> bool {
     rows.iter().any(|row| {
         row.tag == "LANGUAGE"
             && row.fields.get("instance").map(String::as_str) == Some(SPREAD_INSTANCE)
+    })
+}
+
+fn is_hookwall_rows(rows: &[Row]) -> bool {
+    rows.iter().any(|row| {
+        row.tag == "LANGUAGE"
+            && row.fields.get("instance").map(String::as_str) == Some(HOOKWALL_INSTANCE)
     })
 }
 
@@ -1527,6 +1604,7 @@ fn validate_nlevel_rows(rows: &[Row]) -> Result<Validation> {
             calling_joins: calling_joins.len(),
         }),
         spread: None,
+        hookwall: None,
     })
 }
 
@@ -2148,6 +2226,761 @@ fn validate_spread_rows(rows: &[Row]) -> Result<Validation> {
             ledgers: SPREAD_EVENT_KINDS.len(),
             relation_rows: SPREAD_RELATIONS,
         }),
+        hookwall: None,
+    })
+}
+
+// This validator checks the additive round-3 Hookwall/Brown/Shadow/FLOWesSH
+// projection. The immediate R2 parent stays a separately sealed dependency.
+fn validate_hookwall_rows(rows: &[Row]) -> Result<Validation> {
+    if rows.len() != HOOKWALL_RECORDS {
+        return Err(error("HOOKWALL_RECORD_COUNT"));
+    }
+
+    let mut anchors = BTreeMap::<String, (String, String)>::new();
+    let mut cells = BTreeMap::<usize, NLevelCell>::new();
+    let mut ledgers = BTreeMap::<String, BTreeSet<usize>>::new();
+    let mut event_ids = BTreeSet::<String>::new();
+    let mut source_sha = None::<String>;
+    let mut readfirst_count = 0_usize;
+    let mut language_count = 0_usize;
+    let mut parent_count = 0_usize;
+    let mut source_count = 0_usize;
+    let mut center_count = 0_usize;
+    let mut expansion_count = 0_usize;
+    let mut parent_invariant_count = 0_usize;
+    let mut round_count = 0_usize;
+    let mut parent_anchor_count = 0_usize;
+    let mut timing_count = 0_usize;
+    let mut boundary_count = 0_usize;
+    let mut end_count = 0_usize;
+    let last_index = rows.len() - 1;
+
+    for (index, row) in rows.iter().enumerate() {
+        require_authority_zero(row)?;
+        match row.tag.as_str() {
+            "READFIRST" => {
+                require_exact_fields(
+                    row,
+                    &["url", "execution_authority", "json"],
+                    "HOOKWALL_CONTROL_FIELDS",
+                )?;
+                if index != 0 {
+                    return Err(error("ROW_ORDER"));
+                }
+                require_value(row, "url", READFIRST_URL, "HOOKWALL_CONTROL_FIELDS")?;
+                readfirst_count += 1;
+            }
+            "LANGUAGE" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "instance",
+                        "tuple_frame",
+                        "selector_axes",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_INSTANCE",
+                )?;
+                require_value(row, "id", LANGUAGE_ID, "HOOKWALL_INSTANCE")?;
+                require_value(row, "instance", HOOKWALL_INSTANCE, "HOOKWALL_INSTANCE")?;
+                require_value(
+                    row,
+                    "tuple_frame",
+                    "HYPERBEHCS_60D_PLUS",
+                    "HOOKWALL_INSTANCE",
+                )?;
+                if usize_field(row, "selector_axes", "HOOKWALL_INSTANCE")? != NLEVEL_AXES.len() {
+                    return Err(error("HOOKWALL_INSTANCE"));
+                }
+                language_count += 1;
+            }
+            "PARENT" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "instance",
+                        "path",
+                        "sha256",
+                        "records",
+                        "mutation",
+                        "identity_exchange",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_PARENT",
+                )?;
+                require_value(row, "id", "WORD_FLOWE_SPREAD_R2", "HOOKWALL_PARENT")?;
+                require_value(row, "instance", SPREAD_INSTANCE, "HOOKWALL_PARENT")?;
+                require_value(
+                    row,
+                    "path",
+                    "language/word-flowe-spread-r2.flowe",
+                    "HOOKWALL_PARENT",
+                )?;
+                require_value(row, "sha256", SPREAD_CORE_SHA256, "HOOKWALL_PARENT")?;
+                if usize_field(row, "records", "HOOKWALL_PARENT")? != SPREAD_RECORDS {
+                    return Err(error("HOOKWALL_PARENT"));
+                }
+                require_value(row, "mutation", "0", "HOOKWALL_PARENT")?;
+                require_value(row, "identity_exchange", "0", "HOOKWALL_PARENT")?;
+                parent_count += 1;
+            }
+            "SOURCE" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "path",
+                        "occurrences",
+                        "sha256",
+                        "evidence",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_SOURCE",
+                )?;
+                require_value(
+                    row,
+                    "path",
+                    "books/LAW-HOOKWALL-BROWN-SHADOW-FLOWesSH-CONTINUATION.md",
+                    "HOOKWALL_SOURCE",
+                )?;
+                require_value(row, "occurrences", "1", "HOOKWALL_SOURCE")?;
+                require_value(row, "evidence", "OPERATOR_CANON", "HOOKWALL_SOURCE")?;
+                let digest = field(row, "sha256", "HOOKWALL_SOURCE")?;
+                if !valid_sha256(digest) {
+                    return Err(error("HOOKWALL_SOURCE"));
+                }
+                source_sha = Some(digest.to_owned());
+                source_count += 1;
+            }
+            "CENTER" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "members",
+                        "traversal_surface",
+                        "sh",
+                        "identity_exchange",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_CENTER",
+                )?;
+                require_value(row, "members", "HBI,HBP,SHA,SH,HASH", "HOOKWALL_CENTER")?;
+                require_value(
+                    row,
+                    "traversal_surface",
+                    "HBI,HBP,SHA,SH,HASH",
+                    "HOOKWALL_CENTER",
+                )?;
+                require_value(row, "sh", "OPERATOR_CANON_UNRESOLVED", "HOOKWALL_CENTER")?;
+                require_value(row, "identity_exchange", "0", "HOOKWALL_CENTER")?;
+                center_count += 1;
+            }
+            "EXPANSION" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "instance",
+                        "law",
+                        "law_sha256",
+                        "parent",
+                        "parent_sha256",
+                        "builder",
+                        "builder_sha256",
+                        "n_open",
+                        "compiled_round",
+                        "compiled_round_count",
+                        "cells",
+                        "event_kinds",
+                        "relation_rows",
+                        "selector_axes",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_INSTANCE",
+                )?;
+                require_value(
+                    row,
+                    "id",
+                    "hookwall_brown_shadow_flowessh_v4",
+                    "HOOKWALL_INSTANCE",
+                )?;
+                require_value(row, "instance", HOOKWALL_INSTANCE, "HOOKWALL_INSTANCE")?;
+                require_value(
+                    row,
+                    "law",
+                    "books/LAW-HOOKWALL-BROWN-SHADOW-FLOWesSH-CONTINUATION.md",
+                    "HOOKWALL_INSTANCE",
+                )?;
+                if source_sha.as_deref() != Some(field(row, "law_sha256", "HOOKWALL_INSTANCE")?) {
+                    return Err(error("HOOKWALL_INSTANCE"));
+                }
+                require_value(
+                    row,
+                    "parent",
+                    "language/word-flowe-spread-r2.flowe",
+                    "HOOKWALL_INSTANCE",
+                )?;
+                require_value(
+                    row,
+                    "parent_sha256",
+                    SPREAD_CORE_SHA256,
+                    "HOOKWALL_INSTANCE",
+                )?;
+                require_value(
+                    row,
+                    "builder",
+                    "tools/build_hookwall_shadow_flowessh.py",
+                    "HOOKWALL_INSTANCE",
+                )?;
+                if !valid_sha256(field(row, "builder_sha256", "HOOKWALL_INSTANCE")?) {
+                    return Err(error("HOOKWALL_INSTANCE"));
+                }
+                require_value(row, "n_open", "1", "HOOKWALL_INSTANCE")?;
+                if usize_field(row, "compiled_round", "HOOKWALL_INSTANCE")? != HOOKWALL_ROUND
+                    || usize_field(row, "compiled_round_count", "HOOKWALL_INSTANCE")? != 1
+                    || usize_field(row, "cells", "HOOKWALL_INSTANCE")? != NLEVEL_CELLS
+                    || usize_field(row, "event_kinds", "HOOKWALL_INSTANCE")?
+                        != HOOKWALL_EVENT_KINDS.len()
+                    || usize_field(row, "relation_rows", "HOOKWALL_INSTANCE")? != HOOKWALL_RELATIONS
+                    || usize_field(row, "selector_axes", "HOOKWALL_INSTANCE")? != NLEVEL_AXES.len()
+                {
+                    return Err(error("HOOKWALL_INSTANCE"));
+                }
+                expansion_count += 1;
+            }
+            "PARENT_INVARIANT" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "parent",
+                        "compiled_rounds",
+                        "cells",
+                        "event_kinds",
+                        "relation_rows",
+                        "identity_exchange",
+                        "deletion",
+                        "validated",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_PARENT_INVARIANT",
+                )?;
+                require_value(
+                    row,
+                    "id",
+                    "WORD_FLOWE_SPREAD_V3_TYPED_GROWTH",
+                    "HOOKWALL_PARENT_INVARIANT",
+                )?;
+                require_value(row, "parent", SPREAD_INSTANCE, "HOOKWALL_PARENT_INVARIANT")?;
+                if usize_field(row, "compiled_rounds", "HOOKWALL_PARENT_INVARIANT")?
+                    != SPREAD_ROUNDS
+                    || usize_field(row, "cells", "HOOKWALL_PARENT_INVARIANT")? != NLEVEL_CELLS
+                    || usize_field(row, "event_kinds", "HOOKWALL_PARENT_INVARIANT")?
+                        != SPREAD_EVENT_KINDS.len()
+                    || usize_field(row, "relation_rows", "HOOKWALL_PARENT_INVARIANT")?
+                        != SPREAD_RELATIONS
+                {
+                    return Err(error("HOOKWALL_PARENT_INVARIANT"));
+                }
+                require_value(row, "identity_exchange", "0", "HOOKWALL_PARENT_INVARIANT")?;
+                require_value(row, "deletion", "0", "HOOKWALL_PARENT_INVARIANT")?;
+                require_value(row, "validated", "1", "HOOKWALL_PARENT_INVARIANT")?;
+                parent_invariant_count += 1;
+            }
+            "ROUND" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "ordinal",
+                        "previous_instance",
+                        "previous",
+                        "increase_q",
+                        "n_open",
+                        "compiled_projection",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_ROUND",
+                )?;
+                require_value(row, "id", "round_03", "HOOKWALL_ROUND")?;
+                if usize_field(row, "ordinal", "HOOKWALL_ROUND")? != HOOKWALL_ROUND
+                    || usize_field(row, "increase_q", "HOOKWALL_ROUND")? != HOOKWALL_ROUND
+                {
+                    return Err(error("HOOKWALL_ROUND"));
+                }
+                require_value(row, "previous_instance", SPREAD_INSTANCE, "HOOKWALL_ROUND")?;
+                require_value(row, "previous", "round_02", "HOOKWALL_ROUND")?;
+                require_value(row, "n_open", "1", "HOOKWALL_ROUND")?;
+                require_value(row, "compiled_projection", "1", "HOOKWALL_ROUND")?;
+                round_count += 1;
+            }
+            "ANCHOR" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "token",
+                        "meaning",
+                        "exact",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_ANCHOR",
+                )?;
+                let identity = field(row, "id", "HOOKWALL_ANCHOR")?.to_owned();
+                let value = (
+                    field(row, "token", "HOOKWALL_ANCHOR")?.to_owned(),
+                    field(row, "meaning", "HOOKWALL_ANCHOR")?.to_owned(),
+                );
+                require_value(row, "exact", "1", "HOOKWALL_ANCHOR")?;
+                if anchors.insert(identity, value).is_some() {
+                    return Err(error("HOOKWALL_ANCHOR"));
+                }
+            }
+            "PARENT_ANCHOR_REF" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "parent_instance",
+                        "parent_id",
+                        "reference_only",
+                        "identity_exchange",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_PARENT_ANCHOR",
+                )?;
+                require_value(row, "id", "n_o0o", "HOOKWALL_PARENT_ANCHOR")?;
+                require_value(
+                    row,
+                    "parent_instance",
+                    SPREAD_INSTANCE,
+                    "HOOKWALL_PARENT_ANCHOR",
+                )?;
+                require_value(row, "parent_id", "n_o0o", "HOOKWALL_PARENT_ANCHOR")?;
+                require_value(row, "reference_only", "1", "HOOKWALL_PARENT_ANCHOR")?;
+                require_value(row, "identity_exchange", "0", "HOOKWALL_PARENT_ANCHOR")?;
+                parent_anchor_count += 1;
+            }
+            "CELL_REF" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "parent_instance",
+                        "parent_id",
+                        "reference_only",
+                        "level",
+                        "book",
+                        "book_ordinal",
+                        "q",
+                        "space_radius",
+                        "x",
+                        "y",
+                        "z",
+                        "time",
+                        "colour",
+                        "oil_family",
+                        "identity_exchange",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_CELL",
+                )?;
+                let q = usize_field(row, "q", "HOOKWALL_CELL")?;
+                let n = usize_field(row, "level", "HOOKWALL_CELL")?;
+                let book_ordinal = usize_field(row, "book_ordinal", "HOOKWALL_CELL")?;
+                let identity = format!("cell_n{n:02}_b{book_ordinal:02}");
+                if n >= NLEVEL_LEVELS
+                    || book_ordinal >= NLEVEL_BOOKS
+                    || q != n * NLEVEL_BOOKS + book_ordinal
+                    || field(row, "id", "HOOKWALL_CELL")? != identity
+                    || field(row, "parent_id", "HOOKWALL_CELL")? != identity
+                {
+                    return Err(error("HOOKWALL_CELL"));
+                }
+                require_value(row, "parent_instance", SPREAD_INSTANCE, "HOOKWALL_CELL")?;
+                require_value(row, "reference_only", "1", "HOOKWALL_CELL")?;
+                require_value(row, "book", NLEVEL_BOOK_IDS[book_ordinal], "HOOKWALL_CELL")?;
+                let n_i64 = i64::try_from(n).map_err(|_| error("HOOKWALL_CELL"))?;
+                let book_i64 = i64::try_from(book_ordinal).map_err(|_| error("HOOKWALL_CELL"))?;
+                let expected_x = book_i64 * 2 - 9;
+                let expected_y = n_i64 * 2 - 15;
+                let expected_z =
+                    i64::try_from((n + book_ordinal) % 3).map_err(|_| error("HOOKWALL_CELL"))? - 1;
+                if i64_field(row, "x", "HOOKWALL_CELL")? != expected_x
+                    || i64_field(row, "y", "HOOKWALL_CELL")? != expected_y
+                    || i64_field(row, "z", "HOOKWALL_CELL")? != expected_z
+                    || field(row, "time", "HOOKWALL_CELL")?
+                        != NLEVEL_TIME_NAMES[q % NLEVEL_TIME_NAMES.len()]
+                    || field(row, "colour", "HOOKWALL_CELL")?
+                        != NLEVEL_COLOURS[(n + book_ordinal) % NLEVEL_COLOURS.len()]
+                    || usize_field(row, "space_radius", "HOOKWALL_CELL")? != n + 1
+                {
+                    return Err(error("HOOKWALL_CELL"));
+                }
+                let oil_family =
+                    NLEVEL_OIL_FAMILIES[(n + 2 * book_ordinal) % NLEVEL_OIL_FAMILIES.len()];
+                require_value(row, "oil_family", oil_family, "HOOKWALL_CELL")?;
+                require_value(row, "identity_exchange", "0", "HOOKWALL_CELL")?;
+                let cell = NLevelCell {
+                    identity,
+                    book: NLEVEL_BOOK_IDS[book_ordinal].to_owned(),
+                    n,
+                    book_ordinal,
+                    q,
+                    translucence_q8: 0,
+                    oil_family: oil_family.to_owned(),
+                    space_radius: n + 1,
+                };
+                if cells.insert(q, cell).is_some() {
+                    return Err(error("HOOKWALL_CELL"));
+                }
+            }
+            "TIMING_BOUNDARY" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "instant_address",
+                        "elapsed_measurement_present",
+                        "runtime_measurement_present",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_TIMING",
+                )?;
+                require_value(row, "instant_address", "1", "HOOKWALL_TIMING")?;
+                require_value(row, "elapsed_measurement_present", "0", "HOOKWALL_TIMING")?;
+                require_value(row, "runtime_measurement_present", "0", "HOOKWALL_TIMING")?;
+                timing_count += 1;
+            }
+            "BOUNDARY" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "physical_mapping",
+                        "live_runtime_mapping",
+                        "system_affirmed",
+                        "round_03_compilation",
+                        "hookwall_runtime_enforcement",
+                        "claim_back_external_evidence",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_BOUNDARY",
+                )?;
+                require_value(row, "physical_mapping", "UNVERIFIED", "HOOKWALL_BOUNDARY")?;
+                require_value(
+                    row,
+                    "live_runtime_mapping",
+                    "UNVERIFIED",
+                    "HOOKWALL_BOUNDARY",
+                )?;
+                require_value(row, "system_affirmed", "0", "HOOKWALL_BOUNDARY")?;
+                require_value(row, "round_03_compilation", "DESIGN", "HOOKWALL_BOUNDARY")?;
+                require_value(
+                    row,
+                    "hookwall_runtime_enforcement",
+                    "0",
+                    "HOOKWALL_BOUNDARY",
+                )?;
+                require_value(
+                    row,
+                    "claim_back_external_evidence",
+                    "0",
+                    "HOOKWALL_BOUNDARY",
+                )?;
+                boundary_count += 1;
+            }
+            "END" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "status",
+                        "n_open",
+                        "compiled_round",
+                        "compiled_round_count",
+                        "cells",
+                        "event_kinds",
+                        "relation_rows",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "HOOKWALL_END",
+                )?;
+                if index != last_index {
+                    return Err(error("ROW_ORDER"));
+                }
+                require_value(
+                    row,
+                    "status",
+                    "COMPILED_BOUNDED_HOOKWALL_SHADOW_PROJECTION",
+                    "HOOKWALL_END",
+                )?;
+                require_value(row, "n_open", "1", "HOOKWALL_END")?;
+                if usize_field(row, "compiled_round", "HOOKWALL_END")? != HOOKWALL_ROUND
+                    || usize_field(row, "compiled_round_count", "HOOKWALL_END")? != 1
+                    || usize_field(row, "cells", "HOOKWALL_END")? != NLEVEL_CELLS
+                    || usize_field(row, "event_kinds", "HOOKWALL_END")?
+                        != HOOKWALL_EVENT_KINDS.len()
+                    || usize_field(row, "relation_rows", "HOOKWALL_END")? != HOOKWALL_RELATIONS
+                {
+                    return Err(error("HOOKWALL_END"));
+                }
+                end_count += 1;
+            }
+            tag if HOOKWALL_EVENT_KINDS.contains(&tag) => {
+                let specific: &[&str] = match tag {
+                    "CALLING_CHAIN_MORE" => &["calling", "chain"],
+                    "HOOKWALL_REVIEW" => &["review", "claim_verdict"],
+                    "CLAIM_BACK_WHITE" => &["claim", "evidence_verdict"],
+                    "WHITE_TO_WASDTE"
+                    | "WASDTE_TO_BE"
+                    | "BE_TO_NOT_WHITE"
+                    | "NOT_WHITE_TO_B"
+                    | "B_TO_BROWNS"
+                    | "BROWNS_TO_BETWEENS"
+                    | "BETWEENS_TO_AROUNDS" => &["grammar"],
+                    "SHADOW_GUIDING" => &["guidance", "guided_cell_retained"],
+                    "CALMING_OIL_CONTINUE" => &["oil_family", "oil_amplitude", "calming"],
+                    "CALLING_OUTWAR" => &["token", "operator_bound"],
+                    "REDUCTONS" => &["token", "semantics", "deletion"],
+                    "FLOWESSH" => &["token", "composition"],
+                    _ => return Err(error("HOOKWALL_EVENT_FIELDS")),
+                };
+                require_exact_fields_union(
+                    row,
+                    &HOOKWALL_EVENT_COMMON_FIELDS,
+                    specific,
+                    "HOOKWALL_EVENT_FIELDS",
+                )?;
+                let q = usize_field(row, "q", "HOOKWALL_EVENT")?;
+                let cell = cells.get(&q).ok_or_else(|| error("HOOKWALL_EVENT"))?;
+                if usize_field(row, "round", "HOOKWALL_EVENT")? != HOOKWALL_ROUND
+                    || usize_field(row, "increase_q", "HOOKWALL_EVENT")? != HOOKWALL_ROUND
+                    || usize_field(row, "growth_q", "HOOKWALL_EVENT")?
+                        != cell.space_radius + HOOKWALL_ROUND
+                    || field(row, "cell", "HOOKWALL_EVENT")? != cell.identity
+                    || usize_field(row, "level", "HOOKWALL_EVENT")? != cell.n
+                    || field(row, "book", "HOOKWALL_EVENT")? != cell.book
+                {
+                    return Err(error("HOOKWALL_EVENT"));
+                }
+                let expected_id = format!(
+                    "{}_r{HOOKWALL_ROUND:02}_n{:02}_b{:02}",
+                    tag.to_ascii_lowercase(),
+                    cell.n,
+                    cell.book_ordinal
+                );
+                if field(row, "id", "HOOKWALL_EVENT")? != expected_id
+                    || !event_ids.insert(expected_id)
+                {
+                    return Err(error("HOOKWALL_EVENT"));
+                }
+                require_value(row, "n_open", "1", "HOOKWALL_EVENT")?;
+                require_value(row, "instant_address", "1", "HOOKWALL_TIMING")?;
+                require_value(row, "elapsed_measurement_present", "0", "HOOKWALL_TIMING")?;
+                require_value(row, "runtime_measurement_present", "0", "HOOKWALL_TIMING")?;
+                require_value(row, "identity_exchange", "0", "HOOKWALL_EVENT")?;
+                require_value(row, "source_retained", "1", "HOOKWALL_EVENT")?;
+
+                match tag {
+                    "CALLING_CHAIN_MORE" => {
+                        let next_q = (q + 1) % NLEVEL_CELLS;
+                        let next_identity = format!(
+                            "cell_n{:02}_b{:02}",
+                            next_q / NLEVEL_BOOKS,
+                            next_q % NLEVEL_BOOKS
+                        );
+                        require_value(row, "from", &cell.identity, "HOOKWALL_EVENT")?;
+                        require_value(row, "to", &next_identity, "HOOKWALL_EVENT")?;
+                        require_value(row, "direction", "CHAIN_MORE", "HOOKWALL_EVENT")?;
+                        require_value(row, "calling", "n_callings", "HOOKWALL_EVENT")?;
+                        require_value(row, "chain", "n_chains", "HOOKWALL_EVENT")?;
+                    }
+                    "HOOKWALL_REVIEW" => {
+                        require_value(row, "from", &cell.identity, "HOOKWALL_EVENT")?;
+                        require_value(row, "to", "n_hookwalls", "HOOKWALL_EVENT")?;
+                        require_value(row, "direction", "TO_HOOKWALL_REVIEW", "HOOKWALL_EVENT")?;
+                        require_value(row, "review", "DECLARATIVE_PROVENANCE", "HOOKWALL_EVENT")?;
+                        require_value(row, "claim_verdict", "UNRESOLVED", "HOOKWALL_EVENT")?;
+                    }
+                    "CLAIM_BACK_WHITE" => {
+                        require_value(row, "from", "n_claims", "HOOKWALL_EVENT")?;
+                        require_value(row, "to", "n_white", "HOOKWALL_EVENT")?;
+                        require_value(row, "direction", "BACK_TO_WHITE", "HOOKWALL_EVENT")?;
+                        require_value(row, "claim", "claims", "HOOKWALL_EVENT")?;
+                        require_value(row, "evidence_verdict", "0", "HOOKWALL_EVENT")?;
+                    }
+                    "WHITE_TO_WASDTE" => {
+                        require_value(row, "from", "n_white", "HOOKWALL_CHAIN")?;
+                        require_value(row, "to", "n_wasdte", "HOOKWALL_CHAIN")?;
+                        require_value(row, "direction", "TO_WASDTE", "HOOKWALL_CHAIN")?;
+                        require_value(row, "grammar", "white_is_wasdte", "HOOKWALL_CHAIN")?;
+                    }
+                    "WASDTE_TO_BE" => {
+                        require_value(row, "from", "n_wasdte", "HOOKWALL_CHAIN")?;
+                        require_value(row, "to", "n_be", "HOOKWALL_CHAIN")?;
+                        require_value(row, "direction", "TO_BE", "HOOKWALL_CHAIN")?;
+                        require_value(row, "grammar", "wasdte_be", "HOOKWALL_CHAIN")?;
+                    }
+                    "BE_TO_NOT_WHITE" => {
+                        require_value(row, "from", "n_be", "HOOKWALL_CHAIN")?;
+                        require_value(row, "to", "n_not_white", "HOOKWALL_CHAIN")?;
+                        require_value(row, "direction", "TO_NOT_WHITE", "HOOKWALL_CHAIN")?;
+                        require_value(row, "grammar", "be_not_white", "HOOKWALL_CHAIN")?;
+                    }
+                    "NOT_WHITE_TO_B" => {
+                        require_value(row, "from", "n_not_white", "HOOKWALL_CHAIN")?;
+                        require_value(row, "to", "n_B", "HOOKWALL_CHAIN")?;
+                        require_value(row, "direction", "TO_B", "HOOKWALL_CHAIN")?;
+                        require_value(row, "grammar", "not_white_B", "HOOKWALL_CHAIN")?;
+                    }
+                    "B_TO_BROWNS" => {
+                        require_value(row, "from", "n_B", "HOOKWALL_CHAIN")?;
+                        require_value(row, "to", "n_browns", "HOOKWALL_CHAIN")?;
+                        require_value(row, "direction", "TO_BROWNS", "HOOKWALL_CHAIN")?;
+                        require_value(row, "grammar", "B_browns", "HOOKWALL_CHAIN")?;
+                    }
+                    "BROWNS_TO_BETWEENS" => {
+                        require_value(row, "from", "n_browns", "HOOKWALL_CHAIN")?;
+                        require_value(row, "to", "n_betweens", "HOOKWALL_CHAIN")?;
+                        require_value(row, "direction", "TO_BETWEENS", "HOOKWALL_CHAIN")?;
+                        require_value(row, "grammar", "browns_betweens", "HOOKWALL_CHAIN")?;
+                    }
+                    "BETWEENS_TO_AROUNDS" => {
+                        require_value(row, "from", "n_betweens", "HOOKWALL_CHAIN")?;
+                        require_value(row, "to", "n_arounds", "HOOKWALL_CHAIN")?;
+                        require_value(row, "direction", "TO_AROUNDS", "HOOKWALL_CHAIN")?;
+                        require_value(row, "grammar", "betweens_arounds", "HOOKWALL_CHAIN")?;
+                    }
+                    "SHADOW_GUIDING" => {
+                        require_value(row, "from", "n_shadows", "HOOKWALL_EVENT")?;
+                        require_value(row, "to", &cell.identity, "HOOKWALL_EVENT")?;
+                        require_value(row, "direction", "GUIDING", "HOOKWALL_EVENT")?;
+                        require_value(row, "guidance", "SHADOWS", "HOOKWALL_EVENT")?;
+                        require_value(row, "guided_cell_retained", "1", "HOOKWALL_EVENT")?;
+                    }
+                    "CALMING_OIL_CONTINUE" => {
+                        require_value(row, "from", "n_o0o", "HOOKWALL_EVENT")?;
+                        require_value(row, "to", &cell.identity, "HOOKWALL_EVENT")?;
+                        require_value(row, "direction", "CONTINUE_CALMING", "HOOKWALL_EVENT")?;
+                        require_value(row, "oil_family", &cell.oil_family, "HOOKWALL_EVENT")?;
+                        require_value(
+                            row,
+                            "oil_amplitude",
+                            &(cell.space_radius + HOOKWALL_ROUND).to_string(),
+                            "HOOKWALL_EVENT",
+                        )?;
+                        require_value(row, "calming", "1", "HOOKWALL_EVENT")?;
+                    }
+                    "CALLING_OUTWAR" => {
+                        require_value(row, "from", &cell.identity, "HOOKWALL_EVENT")?;
+                        require_value(row, "to", "n_outwar", "HOOKWALL_EVENT")?;
+                        require_value(row, "direction", "CALLING_OUTWAR", "HOOKWALL_EVENT")?;
+                        require_value(row, "token", "outwar", "HOOKWALL_EVENT")?;
+                        require_value(row, "operator_bound", "1", "HOOKWALL_EVENT")?;
+                    }
+                    "REDUCTONS" => {
+                        require_value(row, "from", &cell.identity, "HOOKWALL_EVENT")?;
+                        require_value(row, "to", "n_o0o", "HOOKWALL_EVENT")?;
+                        require_value(row, "direction", "REDUCTONS_TO_O0O", "HOOKWALL_EVENT")?;
+                        require_value(row, "token", "reductons", "HOOKWALL_EVENT")?;
+                        require_value(
+                            row,
+                            "semantics",
+                            "OPERATOR_CANON_UNRESOLVED",
+                            "HOOKWALL_EVENT",
+                        )?;
+                        require_value(row, "deletion", "0", "HOOKWALL_EVENT")?;
+                    }
+                    "FLOWESSH" => {
+                        require_value(row, "from", "n_FLOWesSH", "HOOKWALL_FLOWESSH")?;
+                        require_value(row, "to", &cell.identity, "HOOKWALL_FLOWESSH")?;
+                        require_value(row, "direction", "FLOWESSH_TO_CELL", "HOOKWALL_FLOWESSH")?;
+                        require_value(row, "token", "FLOWesSH", "HOOKWALL_FLOWESSH")?;
+                        require_value(
+                            row,
+                            "composition",
+                            "OPERATOR_CANON_UNRESOLVED",
+                            "HOOKWALL_FLOWESSH",
+                        )?;
+                    }
+                    _ => return Err(error("HOOKWALL_EVENT")),
+                }
+                if !ledgers.entry(tag.to_owned()).or_default().insert(q) {
+                    return Err(error("HOOKWALL_LEDGER_COUNT"));
+                }
+            }
+            _ => return Err(error("ROW_TAG")),
+        }
+    }
+
+    if readfirst_count != 1
+        || language_count != 1
+        || parent_count != 1
+        || source_count != 1
+        || center_count != 1
+        || expansion_count != 1
+        || parent_invariant_count != 1
+        || round_count != 1
+        || parent_anchor_count != 1
+        || timing_count != 1
+        || boundary_count != 1
+        || end_count != 1
+    {
+        return Err(error("HOOKWALL_CONTROL_COUNT"));
+    }
+    let expected_anchors = HOOKWALL_ANCHORS
+        .into_iter()
+        .map(|(identity, token, meaning)| {
+            (identity.to_owned(), (token.to_owned(), meaning.to_owned()))
+        })
+        .collect();
+    if anchors != expected_anchors {
+        return Err(error("HOOKWALL_ANCHOR"));
+    }
+    if cells.len() != NLEVEL_CELLS || (0..NLEVEL_CELLS).any(|q| !cells.contains_key(&q)) {
+        return Err(error("HOOKWALL_CELL"));
+    }
+    if ledgers.len() != HOOKWALL_EVENT_KINDS.len() {
+        return Err(error("HOOKWALL_LEDGER_COUNT"));
+    }
+    for tag in HOOKWALL_EVENT_KINDS {
+        let ledger = ledgers
+            .get(tag)
+            .ok_or_else(|| error("HOOKWALL_LEDGER_COUNT"))?;
+        if ledger.len() != NLEVEL_CELLS || (0..NLEVEL_CELLS).any(|q| !ledger.contains(&q)) {
+            return Err(error("HOOKWALL_LEDGER_COUNT"));
+        }
+    }
+
+    Ok(Validation {
+        records: rows.len(),
+        glyphs: 0,
+        words: 0,
+        nodes: NLEVEL_CELLS + HOOKWALL_ANCHORS.len() + 1,
+        calling_joins: 2 * NLEVEL_CELLS,
+        flowe_edges: NLEVEL_CELLS,
+        other_relations: 12 * NLEVEL_CELLS,
+        nlevel: None,
+        spread: None,
+        hookwall: Some(HookwallValidation {
+            round: HOOKWALL_ROUND,
+            cells: NLEVEL_CELLS,
+            ledgers: HOOKWALL_EVENT_KINDS.len(),
+            relation_rows: HOOKWALL_RELATIONS,
+        }),
     })
 }
 
@@ -2158,6 +2991,9 @@ fn validate_bytes(bytes: &[u8]) -> Result<Validation> {
         || rows.last().map(|row| row.tag.as_str()) != Some("END")
     {
         return Err(error("ROW_ORDER"));
+    }
+    if is_hookwall_rows(&rows) {
+        return validate_hookwall_rows(&rows);
     }
     if is_spread_rows(&rows) {
         return validate_spread_rows(&rows);
@@ -2371,6 +3207,7 @@ fn validate_bytes(bytes: &[u8]) -> Result<Validation> {
         other_relations: other_edges.len(),
         nlevel: None,
         spread: None,
+        hookwall: None,
     })
 }
 
@@ -2388,7 +3225,20 @@ fn run() -> Result<Validation> {
 fn main() -> ExitCode {
     match run() {
         Ok(result) => {
-            if let Some(spread) = result.spread {
+            if let Some(hookwall) = result.hookwall {
+                println!(
+                    "FLOWE_VALIDATE|PASS=1|language={LANGUAGE_ID}|instance={HOOKWALL_INSTANCE}|records={}|round={}|cells={}|ledgers={}|relation_rows={}|nodes={}|calling_joins={}|flowe_edges={}|other_relations={}|validation_scope={VALIDATION_SCOPE}|referenced_file_bytes_bound=0|execution_authority=0|json=0",
+                    result.records,
+                    hookwall.round,
+                    hookwall.cells,
+                    hookwall.ledgers,
+                    hookwall.relation_rows,
+                    result.nodes,
+                    result.calling_joins,
+                    result.flowe_edges,
+                    result.other_relations
+                );
+            } else if let Some(spread) = result.spread {
                 println!(
                     "FLOWE_VALIDATE|PASS=1|language={LANGUAGE_ID}|instance={SPREAD_INSTANCE}|records={}|rounds={}|cells={}|ledgers={}|relation_rows={}|nodes={}|calling_joins={}|flowe_edges={}|other_relations={}|validation_scope={VALIDATION_SCOPE}|referenced_file_bytes_bound=0|execution_authority=0|json=0",
                     result.records,
@@ -2475,6 +3325,13 @@ END|execution_authority=0|json=0\n",
     fn spread_fixture() -> String {
         String::from_utf8(include_bytes!("../language/word-flowe-spread-r2.flowe").to_vec())
             .expect("committed R2 spread language is UTF-8")
+    }
+
+    fn hookwall_fixture() -> String {
+        String::from_utf8(
+            include_bytes!("../language/hookwall-brown-shadow-flowessh-r3.flowe").to_vec(),
+        )
+        .expect("committed round-3 Hookwall language is UTF-8")
     }
 
     #[test]
@@ -2982,6 +3839,241 @@ END|execution_authority=0|json=0\n",
         for (before, after) in mutations {
             let input = spread_fixture().replacen(before, after, 1);
             assert_eq!(failure(&input), FloweError("SPREAD_EVENT_FIELDS"));
+        }
+    }
+
+    #[test]
+    fn accepts_hookwall_brown_shadow_flowessh_v4() {
+        let input = include_bytes!("../language/hookwall-brown-shadow-flowessh-r3.flowe");
+        assert!(input.len() <= super::MAX_INPUT_BYTES);
+        assert!(input
+            .split(|byte| *byte == b'\n')
+            .all(|line| line.len() <= super::MAX_LINE_BYTES));
+        let result = validate_bytes(input).expect("committed round-3 language must validate");
+        let hookwall = result
+            .hookwall
+            .expect("round-3 Hookwall validation summary required");
+        assert_eq!(result.records, 2_588);
+        assert_eq!(hookwall.round, 3);
+        assert_eq!(hookwall.cells, 160);
+        assert_eq!(hookwall.ledgers, 15);
+        assert_eq!(hookwall.relation_rows, 2_400);
+    }
+
+    #[test]
+    fn rejects_hookwall_parent_path_mutation() {
+        let input = hookwall_fixture().replacen(
+            "|path=language/word-flowe-spread-r2.flowe|",
+            "|path=language/other.flowe|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_PARENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_parent_hash_mutation() {
+        let input = hookwall_fixture().replacen(
+            super::SPREAD_CORE_SHA256,
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_PARENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_parent_record_mutation() {
+        let input = hookwall_fixture().replacen(
+            "|records=2738|mutation=0|",
+            "|records=2739|mutation=0|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_PARENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_round_as_ceiling() {
+        let input = hookwall_fixture().replacen(
+            "|previous=round_02|increase_q=3|n_open=1|",
+            "|previous=round_02|increase_q=3|n_open=0|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_ROUND"));
+    }
+
+    #[test]
+    fn rejects_hookwall_growth_formula_mutation() {
+        let input = hookwall_fixture().replacen(
+            "|round=3|increase_q=3|growth_q=4|",
+            "|round=3|increase_q=3|growth_q=5|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_calling_chain_discontinuity() {
+        let input = hookwall_fixture().replacen(
+            "|to=cell_n00_b01|direction=CHAIN_MORE|",
+            "|to=cell_n00_b02|direction=CHAIN_MORE|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_executable_review() {
+        let input = hookwall_fixture().replacen(
+            "|review=DECLARATIVE_PROVENANCE|claim_verdict=UNRESOLVED|",
+            "|review=EXECUTABLE|claim_verdict=UNRESOLVED|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_claim_promoted_to_evidence() {
+        let input = hookwall_fixture().replacen(
+            "|claim=claims|evidence_verdict=0|",
+            "|claim=claims|evidence_verdict=1|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_normalized_exact_tokens() {
+        let mutations = [
+            ("|id=n_wasdte|token=wasdte|", "|id=n_wasdte|token=was|"),
+            ("|id=n_B|token=B|", "|id=n_B|token=b|"),
+            ("|id=n_outwar|token=outwar|", "|id=n_outwar|token=outward|"),
+            (
+                "|id=n_reductons|token=reductons|",
+                "|id=n_reductons|token=reductions|",
+            ),
+            (
+                "|id=n_FLOWesSH|token=FLOWesSH|",
+                "|id=n_FLOWesSH|token=FLOWeSH|",
+            ),
+        ];
+        for (before, after) in mutations {
+            let input = hookwall_fixture().replacen(before, after, 1);
+            assert_eq!(failure(&input), FloweError("HOOKWALL_ANCHOR"));
+        }
+    }
+
+    #[test]
+    fn rejects_hookwall_white_brown_chain_collapse() {
+        let mutations = [
+            ("|grammar=white_is_wasdte|", "|grammar=white_is_white|"),
+            ("|grammar=wasdte_be|", "|grammar=wasdte_wasdte|"),
+            ("|grammar=be_not_white|", "|grammar=be_white|"),
+            ("|grammar=not_white_B|", "|grammar=not_white_browns|"),
+            ("|grammar=B_browns|", "|grammar=B_B|"),
+            ("|grammar=browns_betweens|", "|grammar=browns_arounds|"),
+            ("|grammar=betweens_arounds|", "|grammar=betweens_betweens|"),
+        ];
+        for (before, after) in mutations {
+            let input = hookwall_fixture().replacen(before, after, 1);
+            assert_eq!(failure(&input), FloweError("HOOKWALL_CHAIN"));
+        }
+    }
+
+    #[test]
+    fn rejects_hookwall_shadow_erasure() {
+        let input = hookwall_fixture().replacen(
+            "|guidance=SHADOWS|guided_cell_retained=1|",
+            "|guidance=SHADOWS|guided_cell_retained=0|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_calming_oil_formula_mutation() {
+        let input = hookwall_fixture().replacen(
+            "|oil_amplitude=4|calming=1|",
+            "|oil_amplitude=5|calming=1|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_outwar_normalization() {
+        let input = hookwall_fixture().replacen(
+            "|token=outwar|operator_bound=1|",
+            "|token=outward|operator_bound=1|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_deleting_reductons() {
+        let input = hookwall_fixture().replacen(
+            "|token=reductons|semantics=OPERATOR_CANON_UNRESOLVED|deletion=0|",
+            "|token=reductons|semantics=OPERATOR_CANON_UNRESOLVED|deletion=1|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_flowessh_flattening() {
+        let input = hookwall_fixture().replacen(
+            "|token=FLOWesSH|composition=OPERATOR_CANON_UNRESOLVED|",
+            "|token=FLOWe|composition=RESOLVED|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_FLOWESSH"));
+    }
+
+    #[test]
+    fn rejects_hookwall_elapsed_or_runtime_claim() {
+        let elapsed = hookwall_fixture().replacen(
+            "|instant_address=1|elapsed_measurement_present=0|runtime_measurement_present=0|",
+            "|instant_address=1|elapsed_measurement_present=1|runtime_measurement_present=0|",
+            1,
+        );
+        assert_eq!(failure(&elapsed), FloweError("HOOKWALL_TIMING"));
+        let runtime = hookwall_fixture().replacen(
+            "|instant_address=1|elapsed_measurement_present=0|runtime_measurement_present=0|",
+            "|instant_address=1|elapsed_measurement_present=0|runtime_measurement_present=1|",
+            1,
+        );
+        assert_eq!(failure(&runtime), FloweError("HOOKWALL_TIMING"));
+    }
+
+    #[test]
+    fn rejects_hookwall_parent_anchor_exchange() {
+        let input = hookwall_fixture().replacen(
+            "PARENT_ANCHOR_REF|id=n_o0o|parent_instance=WORD_FLOWE_SPREAD_V3|",
+            "PARENT_ANCHOR_REF|id=n_o0o|parent_instance=NLEVEL_OUTWARD_V2|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("HOOKWALL_PARENT_ANCHOR"));
+    }
+
+    #[test]
+    fn rejects_hookwall_missing_relation() {
+        let fixture = hookwall_fixture();
+        let line = fixture
+            .lines()
+            .find(|line| line.starts_with("FLOWESSH|"))
+            .expect("FLOWESSH fixture row");
+        let input = fixture.replacen(&(line.to_owned() + "\n"), "", 1);
+        assert_eq!(failure(&input), FloweError("HOOKWALL_RECORD_COUNT"));
+    }
+
+    #[test]
+    fn rejects_hookwall_extra_fields_in_every_event_family() {
+        for tag in super::HOOKWALL_EVENT_KINDS {
+            let input = hookwall_fixture().replacen(
+                &(tag.to_owned() + "|"),
+                &(tag.to_owned() + "|unexpected=1|"),
+                1,
+            );
+            assert_eq!(failure(&input), FloweError("HOOKWALL_EVENT_FIELDS"));
         }
     }
 }

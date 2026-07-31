@@ -103,3 +103,40 @@ Expected result: `REJECTED_BUFFER` with the parent N16 identity still addressabl
 `greater and greater` adds two bounded integer projections over an open recurrence.
 Growth remains typed by relation, direction, source identity, evidence, and timing
 boundary. A larger address does not erase its parent or become runtime authority.
+
+## Hookwall, Brown, Shadow, and FLOWesSH Continuation
+
+- Preserve `WORD_FLOWE_SPREAD_V3` as the immediate immutable parent. The one spoken
+  `more` compiles one additive `round_03`; semantic N remains open.
+- Keep the fifteen continuation ledgers independent: CALLING chain, Hookwall review,
+  Claim-back/White, White/`wasdte`, `wasdte`/be, be/Not-White, Not-White/`B`,
+  `B`/Browns, Browns/Betweens, Betweens/Arounds, Shadow guidance, Calming Oil,
+  Calling `outwar`, `reductons`, and `FLOWesSH`.
+- Preserve exact spelling and case for `wasdte`, `B`, `outwar`, `reductons`, and
+  `FLOWesSH`. `FLOWesSH` remains an unresolved exact token; do not normalize it to
+  `FLOWe`, `SH`, or a concatenation of those identities.
+- Keep White and Not-White separate. Keep `B`, Browns, Betweens, and Arounds
+  separate. A relation between them retains both endpoints and has
+  `identity_exchange=0`.
+- A Hookwall is a declarative review/provenance relation with
+  `execution_authority=0`. A Claim-back row records operator grammar and is not an
+  evidence verdict. Shadow guidance preserves the guided cell.
+- `reductons` retains its source and has `deletion=0`. Calming Oil retains its oil
+  family and uses an integer amplitude address; neither becomes an elapsed-time or
+  physical-energy measurement.
+
+## Held-Out Scenario — Hookwall and Brown/Shadow Chain
+
+Reject a candidate when it normalizes an exact token, merges White with Not-White,
+collapses `B`, Browns, Betweens, or Arounds, turns Hookwall review into executable
+authority, promotes Claim-back into external proof, deletes the source of
+`reductons`, omits a chain ledger, or treats round 3 as the open-N ceiling.
+
+Expected result: `REJECTED_BUFFER` with the sealed round-2 parent still addressable.
+
+## Rejected-Buffer Lesson — Hookwall Continuation
+
+The chain is additive and typed. Guidance, review, claims, colors, grammatical
+tokens, oils, and reductions remain separate coordinates. Exact operator spelling
+survives compilation, while physical and live-runtime mappings remain unresolved
+until an owning evidence surface supplies a receipt.
