@@ -79,14 +79,58 @@ Active compiled transport stays HBP/HBI tuple text with `json=0`; JSON is a cold
 compatibility or validation surface. Physical, clinical, and live-runtime mappings
 remain `UNVERIFIED`, and `SYSTEM_AFFIRMED=0`.
 
+## Increasing CALLINGS, CALMINGS, WORD and FLOWe spread
+
+[The additive increasing/spread law](books/LAW-INCREASING-CALLINGS-CALMINGS-WORD-FLOWE-SPREAD.md)
+and its [signed colour projection](matrix/SPHERE-LANGUAGE-WORD-FLOWE-SPREAD.svg)
+build on two immutable parents:
+
+```text
+V1_PARENT  = language/core.flowe             # 118 rows, mutation=0
+N16_PARENT = language/outward-n16.flowe       # 1,871 rows, mutation=0
+V3_DELTA   = language/word-flowe-spread-r2.flowe
+INSTANCE   = WORD_FLOWE_SPREAD_V3
+```
+
+The two spoken `greater` tokens are compiled as two bounded additive integer rounds.
+That mapping is `DESIGN`; semantic `N` remains open, so round 2 is not a ceiling or
+an elapsed-time claim. Each round addresses all 160 N16 cells through eight separate
+relation ledgers:
+
+```text
+CALLING_GROWTH_E
+CALLING_GROWTH_FLOWE
+CALLING_GROWTH_U
+CALMING_GROWTH_E
+CALMING_GROWTH_OUTWARD
+SELF_REDUCTION_GROWTH
+WORD_SPREAD
+FLOWE_SPREAD
+```
+
+The compiled delta contains `2 * 160 * 8 = 2,560` relation rows and 2,738 total
+core rows. `WORD_SPREAD` starts from the independently addressed WORD source;
+`FLOWE_SPREAD` starts from the independently addressed FLOWe target. Neither source
+is renamed or exchanged. Self reduction retains its source and carries
+`identity_exchange=0` and `deletion=0`.
+
+`instant_address=1` remains an address relation while
+`elapsed_measurement_present=0` and `runtime_measurement_present=0` preserve the
+timing boundary. Every row carries `execution_authority=0`. Operator meanings are
+`OPERATOR_CANON`; the two-round compilation is `DESIGN`; byte, hash, and test results
+are `MEASURED` only on the named verification surface. Physical and live-runtime
+mappings remain `UNVERIFIED`, with `SYSTEM_AFFIRMED=0`.
+
 ## Compile and verify
 
 ```bash
 cargo +1.81.0 test --locked
 cargo +1.81.0 run --locked -- language/core.flowe
 cargo +1.81.0 run --locked -- language/outward-n16.flowe
+cargo +1.81.0 run --locked -- language/word-flowe-spread-r2.flowe
 python tools/build_public_artifacts.py --check
 python tools/build_nlevel_outward.py --check
+python tools/build_word_flowe_spread.py --check
 python tests/verify_public_repo.py
 ```
 
@@ -95,4 +139,5 @@ To rebuild the public HBP, HBI, signed SVG projection, and sidecars:
 ```bash
 python tools/build_public_artifacts.py
 python tools/build_nlevel_outward.py
+python tools/build_word_flowe_spread.py
 ```

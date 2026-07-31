@@ -101,3 +101,50 @@ The same binding carries a three-view spacing layer. The literal pattern
 `( . negative (3 (2 (1 o0O 1)2)3) positive . )` has 45 characters and ten
 single-space positions; its outer group, `1)2)3` adjacency, and `P= PIE` spin
 relation are validated without normalizing the grammar into token-only text.
+
+## Additive R2 WORD/FLOWe spread projection
+
+The R2 delta references the sealed V1 and N16 programs as immutable parents rather
+than copying or rewriting them:
+
+```text
+PARENT(V1_CORE)  = language/core.flowe
+PARENT(N16_CORE) = language/outward-n16.flowe
+PARENT_MUTATION = 0
+
+INSTANCE = WORD_FLOWE_SPREAD_V3
+COMPILED_INCREASE_ROUNDS = {1,2}
+TWO_ROUND_COMPILATION = DESIGN
+N = OPEN
+```
+
+The two bounded rounds are a deterministic view of the two spoken `greater` tokens.
+They do not close open N, measure elapsed time, or assert a running system. Each of
+the 160 inherited N16 cells participates once per round in eight independent
+ledgers:
+
+```text
+CALLING_GROWTH_E       : cell -> E
+CALLING_GROWTH_FLOWE   : cell -> FLOWe
+CALLING_GROWTH_U       : cell -> U
+CALMING_GROWTH_E       : cell -> E
+CALMING_GROWTH_OUTWARD : o0O -> cell
+SELF_REDUCTION_GROWTH  : cell -> o0O
+WORD_SPREAD            : WORD -> cell
+FLOWE_SPREAD           : FLOWe -> cell
+```
+
+This yields 320 rows per ledger, 2,560 relation rows, and 2,738 total rows in
+`language/word-flowe-spread-r2.flowe`. CALLING destinations and CALMING directions
+remain distinct. WORD and FLOWe are separate source identities, and every spread
+retains its source with `identity_exchange=0`.
+
+`SELF_REDUCTION_GROWTH` preserves the source cell and the N16 parent identity;
+`deletion=0` and `identity_exchange=0` prohibit erasure or replacement. The parent
+invariant also rechecks all 160 N16 `SELF_REDUCTION` rows without mutating them.
+
+The R2 HBP/HBI and SVG remain tuple/index/projection artifacts with `json=0` and
+`execution_authority=0`. `instant_address=1` is not an elapsed measurement;
+`elapsed_measurement_present=0` and `runtime_measurement_present=0` remain explicit.
+Physical and live-runtime mappings are `UNVERIFIED`, the bounded compilation is
+`DESIGN`, and `SYSTEM_AFFIRMED=0`.

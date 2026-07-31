@@ -118,6 +118,42 @@ const NLEVEL_BOOK_IDS: [&str; 10] = [
 ];
 const NLEVEL_COLOURS: [&str; 4] = ["WHITE", "BLACK", "BROWN", "RAINBOW"];
 const NLEVEL_OIL_FAMILIES: [&str; 3] = ["NORMAL", "ANTI", "ANTI_ANTI"];
+const SPREAD_INSTANCE: &str = "WORD_FLOWE_SPREAD_V3";
+const SPREAD_ROUNDS: usize = 2;
+const SPREAD_EVENT_KINDS: [&str; 8] = [
+    "CALLING_GROWTH_E",
+    "CALLING_GROWTH_FLOWE",
+    "CALLING_GROWTH_U",
+    "CALMING_GROWTH_E",
+    "CALMING_GROWTH_OUTWARD",
+    "SELF_REDUCTION_GROWTH",
+    "WORD_SPREAD",
+    "FLOWE_SPREAD",
+];
+const SPREAD_RELATIONS: usize = SPREAD_ROUNDS * NLEVEL_CELLS * SPREAD_EVENT_KINDS.len();
+const SPREAD_RECORDS: usize = 2_738;
+const V1_CORE_SHA256: &str = "70cf8a98e00f96f76c1159424e00cba3aa75b90d823bffbcb72fdcf0b573e91a";
+const N16_CORE_SHA256: &str = "e6741baba534ca2566f50305f5611449d97867917110b6eade803f8ab154d285";
+const SPREAD_EVENT_COMMON_FIELDS: [&str; 18] = [
+    "id",
+    "cell",
+    "level",
+    "book",
+    "q",
+    "round",
+    "increase_q",
+    "amplitude_q",
+    "n_open",
+    "instant_address",
+    "elapsed_measurement_present",
+    "identity_exchange",
+    "source_retained",
+    "to",
+    "direction",
+    "from",
+    "execution_authority",
+    "json",
+];
 const VALIDATION_SCOPE: &str = "STRUCTURAL_ONLY";
 const SOURCE_PATH: &str = "books/JESSE-TO-RAYSSA-SPHERE-LANGUAGE-SOURCE.md";
 const READFIRST_URL: &str = "https://github.com/JesseBrown1980/FOLLOW-THE-IS-NOT-THE-WILL-AND-WAS/blob/main/matrix/3-D-GITHUB-OF-THRUTH.md";
@@ -179,6 +215,14 @@ struct NLevelValidation {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct SpreadValidation {
+    rounds: usize,
+    cells: usize,
+    ledgers: usize,
+    relation_rows: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Validation {
     records: usize,
     glyphs: usize,
@@ -188,6 +232,7 @@ struct Validation {
     flowe_edges: usize,
     other_relations: usize,
     nlevel: Option<NLevelValidation>,
+    spread: Option<SpreadValidation>,
 }
 
 fn error(code: &'static str) -> FloweError {
@@ -437,6 +482,13 @@ fn is_nlevel_rows(rows: &[Row]) -> bool {
     rows.iter().any(|row| {
         row.tag == "LANGUAGE"
             && row.fields.get("instance").map(String::as_str) == Some(NLEVEL_INSTANCE)
+    })
+}
+
+fn is_spread_rows(rows: &[Row]) -> bool {
+    rows.iter().any(|row| {
+        row.tag == "LANGUAGE"
+            && row.fields.get("instance").map(String::as_str) == Some(SPREAD_INSTANCE)
     })
 }
 
@@ -1474,6 +1526,628 @@ fn validate_nlevel_rows(rows: &[Row]) -> Result<Validation> {
             ledger_rows: ledger_names.len() * NLEVEL_CELLS,
             calling_joins: calling_joins.len(),
         }),
+        spread: None,
+    })
+}
+
+// This validator checks the additive R2 projection while retaining the two
+// referenced parent byte streams as separately sealed dependencies.
+fn validate_spread_rows(rows: &[Row]) -> Result<Validation> {
+    if rows.len() != SPREAD_RECORDS {
+        return Err(error("SPREAD_RECORD_COUNT"));
+    }
+
+    let mut parents = BTreeSet::<String>::new();
+    let mut rounds = BTreeSet::<usize>::new();
+    let mut anchors = BTreeMap::<String, String>::new();
+    let mut cells = BTreeMap::<usize, NLevelCell>::new();
+    let mut ledgers = BTreeMap::<String, BTreeSet<(usize, usize)>>::new();
+    let mut event_ids = BTreeSet::<String>::new();
+    let mut source_sha = None::<String>;
+    let mut readfirst_count = 0_usize;
+    let mut language_count = 0_usize;
+    let mut source_count = 0_usize;
+    let mut center_count = 0_usize;
+    let mut expansion_count = 0_usize;
+    let mut parent_invariant_count = 0_usize;
+    let mut timing_count = 0_usize;
+    let mut boundary_count = 0_usize;
+    let mut end_count = 0_usize;
+    let last_index = rows.len() - 1;
+
+    for (index, row) in rows.iter().enumerate() {
+        require_authority_zero(row)?;
+        match row.tag.as_str() {
+            "READFIRST" => {
+                require_exact_fields(
+                    row,
+                    &["url", "execution_authority", "json"],
+                    "SPREAD_CONTROL_FIELDS",
+                )?;
+                if index != 0 {
+                    return Err(error("ROW_ORDER"));
+                }
+                require_value(row, "url", READFIRST_URL, "SPREAD_CONTROL_FIELDS")?;
+                readfirst_count += 1;
+            }
+            "LANGUAGE" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "instance",
+                        "tuple_frame",
+                        "selector_axes",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_INSTANCE",
+                )?;
+                require_value(row, "id", LANGUAGE_ID, "SPREAD_INSTANCE")?;
+                require_value(row, "instance", SPREAD_INSTANCE, "SPREAD_INSTANCE")?;
+                require_value(row, "tuple_frame", "HYPERBEHCS_60D_PLUS", "SPREAD_INSTANCE")?;
+                if usize_field(row, "selector_axes", "SPREAD_INSTANCE")? != NLEVEL_AXES.len() {
+                    return Err(error("SPREAD_INSTANCE"));
+                }
+                language_count += 1;
+            }
+            "PARENT" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "instance",
+                        "path",
+                        "sha256",
+                        "records",
+                        "mutation",
+                        "identity_exchange",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_PARENT",
+                )?;
+                let identity = field(row, "id", "SPREAD_PARENT")?.to_owned();
+                if !parents.insert(identity.clone()) {
+                    return Err(error("SPREAD_PARENT"));
+                }
+                let (instance, path, digest, records) = match identity.as_str() {
+                    "V1_CORE" => (
+                        LANGUAGE_ID,
+                        "language/core.flowe",
+                        V1_CORE_SHA256,
+                        118_usize,
+                    ),
+                    "N16_CORE" => (
+                        NLEVEL_INSTANCE,
+                        "language/outward-n16.flowe",
+                        N16_CORE_SHA256,
+                        NLEVEL_RECORDS,
+                    ),
+                    _ => return Err(error("SPREAD_PARENT")),
+                };
+                require_value(row, "instance", instance, "SPREAD_PARENT")?;
+                require_value(row, "path", path, "SPREAD_PARENT")?;
+                require_value(row, "sha256", digest, "SPREAD_PARENT")?;
+                if usize_field(row, "records", "SPREAD_PARENT")? != records {
+                    return Err(error("SPREAD_PARENT"));
+                }
+                require_value(row, "mutation", "0", "SPREAD_PARENT")?;
+                require_value(row, "identity_exchange", "0", "SPREAD_PARENT")?;
+            }
+            "SOURCE" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "path",
+                        "occurrences",
+                        "sha256",
+                        "evidence",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_SOURCE",
+                )?;
+                require_value(
+                    row,
+                    "path",
+                    "books/LAW-INCREASING-CALLINGS-CALMINGS-WORD-FLOWE-SPREAD.md",
+                    "SPREAD_SOURCE",
+                )?;
+                require_value(row, "occurrences", "1", "SPREAD_SOURCE")?;
+                require_value(row, "evidence", "OPERATOR_CANON", "SPREAD_SOURCE")?;
+                let digest = field(row, "sha256", "SPREAD_SOURCE")?;
+                if !valid_sha256(digest) {
+                    return Err(error("SPREAD_SOURCE"));
+                }
+                source_sha = Some(digest.to_owned());
+                source_count += 1;
+            }
+            "CENTER" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "members",
+                        "traversal_surface",
+                        "sh",
+                        "identity_exchange",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_CENTER",
+                )?;
+                require_value(row, "members", "HBI,HBP,SHA,SH,HASH", "SPREAD_CENTER")?;
+                require_value(
+                    row,
+                    "traversal_surface",
+                    "HBI,HBP,SHA,SH,HASH",
+                    "SPREAD_CENTER",
+                )?;
+                require_value(row, "sh", "OPERATOR_CANON_UNRESOLVED", "SPREAD_CENTER")?;
+                require_value(row, "identity_exchange", "0", "SPREAD_CENTER")?;
+                center_count += 1;
+            }
+            "EXPANSION" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "instance",
+                        "law",
+                        "law_sha256",
+                        "v1",
+                        "v1_sha256",
+                        "base",
+                        "base_sha256",
+                        "builder",
+                        "builder_sha256",
+                        "n_open",
+                        "compiled_rounds",
+                        "cells",
+                        "event_kinds",
+                        "relation_rows",
+                        "selector_axes",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_INSTANCE",
+                )?;
+                require_value(row, "id", "word_flowe_spread_v3", "SPREAD_INSTANCE")?;
+                require_value(row, "instance", SPREAD_INSTANCE, "SPREAD_INSTANCE")?;
+                require_value(
+                    row,
+                    "law",
+                    "books/LAW-INCREASING-CALLINGS-CALMINGS-WORD-FLOWE-SPREAD.md",
+                    "SPREAD_INSTANCE",
+                )?;
+                if source_sha.as_deref() != Some(field(row, "law_sha256", "SPREAD_INSTANCE")?) {
+                    return Err(error("SPREAD_INSTANCE"));
+                }
+                require_value(row, "v1", "language/core.flowe", "SPREAD_INSTANCE")?;
+                require_value(row, "v1_sha256", V1_CORE_SHA256, "SPREAD_INSTANCE")?;
+                require_value(row, "base", "language/outward-n16.flowe", "SPREAD_INSTANCE")?;
+                require_value(row, "base_sha256", N16_CORE_SHA256, "SPREAD_INSTANCE")?;
+                require_value(
+                    row,
+                    "builder",
+                    "tools/build_word_flowe_spread.py",
+                    "SPREAD_INSTANCE",
+                )?;
+                if !valid_sha256(field(row, "builder_sha256", "SPREAD_INSTANCE")?) {
+                    return Err(error("SPREAD_INSTANCE"));
+                }
+                require_value(row, "n_open", "1", "SPREAD_INSTANCE")?;
+                if usize_field(row, "compiled_rounds", "SPREAD_INSTANCE")? != SPREAD_ROUNDS
+                    || usize_field(row, "cells", "SPREAD_INSTANCE")? != NLEVEL_CELLS
+                    || usize_field(row, "event_kinds", "SPREAD_INSTANCE")?
+                        != SPREAD_EVENT_KINDS.len()
+                    || usize_field(row, "relation_rows", "SPREAD_INSTANCE")? != SPREAD_RELATIONS
+                    || usize_field(row, "selector_axes", "SPREAD_INSTANCE")? != NLEVEL_AXES.len()
+                {
+                    return Err(error("SPREAD_INSTANCE"));
+                }
+                expansion_count += 1;
+            }
+            "PARENT_INVARIANT" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "parent",
+                        "tag",
+                        "rows",
+                        "identity_exchange",
+                        "deletion",
+                        "validated",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_PARENT_INVARIANT",
+                )?;
+                require_value(row, "id", "N16_SELF_REDUCTION", "SPREAD_PARENT_INVARIANT")?;
+                require_value(row, "parent", NLEVEL_INSTANCE, "SPREAD_PARENT_INVARIANT")?;
+                require_value(row, "tag", "SELF_REDUCTION", "SPREAD_PARENT_INVARIANT")?;
+                if usize_field(row, "rows", "SPREAD_PARENT_INVARIANT")? != NLEVEL_CELLS {
+                    return Err(error("SPREAD_PARENT_INVARIANT"));
+                }
+                require_value(row, "identity_exchange", "0", "SPREAD_PARENT_INVARIANT")?;
+                require_value(row, "deletion", "0", "SPREAD_PARENT_INVARIANT")?;
+                require_value(row, "validated", "1", "SPREAD_PARENT_INVARIANT")?;
+                parent_invariant_count += 1;
+            }
+            "ROUND" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "ordinal",
+                        "previous",
+                        "increase_q",
+                        "n_open",
+                        "compiled_projection",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_ROUND",
+                )?;
+                let growth_round = usize_field(row, "ordinal", "SPREAD_ROUND")?;
+                if !(1..=SPREAD_ROUNDS).contains(&growth_round)
+                    || !rounds.insert(growth_round)
+                    || field(row, "id", "SPREAD_ROUND")? != format!("round_{growth_round:02}")
+                    || usize_field(row, "increase_q", "SPREAD_ROUND")? != growth_round
+                {
+                    return Err(error("SPREAD_ROUND"));
+                }
+                let previous = if growth_round == 1 {
+                    NLEVEL_INSTANCE.to_owned()
+                } else {
+                    format!("round_{:02}", growth_round - 1)
+                };
+                require_value(row, "previous", &previous, "SPREAD_ROUND")?;
+                require_value(row, "n_open", "1", "SPREAD_ROUND")?;
+                require_value(row, "compiled_projection", "1", "SPREAD_ROUND")?;
+            }
+            "ANCHOR" => {
+                require_exact_fields(
+                    row,
+                    &["id", "meaning", "execution_authority", "json"],
+                    "SPREAD_ANCHOR",
+                )?;
+                let identity = field(row, "id", "SPREAD_ANCHOR")?.to_owned();
+                let meaning = field(row, "meaning", "SPREAD_ANCHOR")?.to_owned();
+                if anchors.insert(identity, meaning).is_some() {
+                    return Err(error("SPREAD_ANCHOR"));
+                }
+            }
+            "CELL_REF" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "id",
+                        "parent_instance",
+                        "parent_id",
+                        "reference_only",
+                        "level",
+                        "book",
+                        "book_ordinal",
+                        "q",
+                        "space_radius",
+                        "x",
+                        "y",
+                        "z",
+                        "time",
+                        "colour",
+                        "oil_family",
+                        "identity_exchange",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_CELL",
+                )?;
+                let q = usize_field(row, "q", "SPREAD_CELL")?;
+                let n = usize_field(row, "level", "SPREAD_CELL")?;
+                let book_ordinal = usize_field(row, "book_ordinal", "SPREAD_CELL")?;
+                let identity = format!("cell_n{n:02}_b{book_ordinal:02}");
+                if n >= NLEVEL_LEVELS
+                    || book_ordinal >= NLEVEL_BOOKS
+                    || q != n * NLEVEL_BOOKS + book_ordinal
+                    || field(row, "id", "SPREAD_CELL")? != identity
+                    || field(row, "parent_id", "SPREAD_CELL")? != identity
+                {
+                    return Err(error("SPREAD_CELL"));
+                }
+                require_value(row, "parent_instance", NLEVEL_INSTANCE, "SPREAD_CELL")?;
+                require_value(row, "reference_only", "1", "SPREAD_CELL")?;
+                require_value(row, "book", NLEVEL_BOOK_IDS[book_ordinal], "SPREAD_CELL")?;
+                let n_i64 = i64::try_from(n).map_err(|_| error("SPREAD_CELL"))?;
+                let book_i64 = i64::try_from(book_ordinal).map_err(|_| error("SPREAD_CELL"))?;
+                let expected_x = book_i64 * 2 - 9;
+                let expected_y = n_i64 * 2 - 15;
+                let expected_z =
+                    i64::try_from((n + book_ordinal) % 3).map_err(|_| error("SPREAD_CELL"))? - 1;
+                if i64_field(row, "x", "SPREAD_CELL")? != expected_x
+                    || i64_field(row, "y", "SPREAD_CELL")? != expected_y
+                    || i64_field(row, "z", "SPREAD_CELL")? != expected_z
+                    || field(row, "time", "SPREAD_CELL")?
+                        != NLEVEL_TIME_NAMES[q % NLEVEL_TIME_NAMES.len()]
+                    || field(row, "colour", "SPREAD_CELL")?
+                        != NLEVEL_COLOURS[(n + book_ordinal) % NLEVEL_COLOURS.len()]
+                    || usize_field(row, "space_radius", "SPREAD_CELL")? != n + 1
+                {
+                    return Err(error("SPREAD_CELL"));
+                }
+                let oil_family =
+                    NLEVEL_OIL_FAMILIES[(n + 2 * book_ordinal) % NLEVEL_OIL_FAMILIES.len()];
+                require_value(row, "oil_family", oil_family, "SPREAD_CELL")?;
+                require_value(row, "identity_exchange", "0", "SPREAD_CELL")?;
+                let cell = NLevelCell {
+                    identity,
+                    book: NLEVEL_BOOK_IDS[book_ordinal].to_owned(),
+                    n,
+                    book_ordinal,
+                    q,
+                    translucence_q8: 0,
+                    oil_family: oil_family.to_owned(),
+                    space_radius: n + 1,
+                };
+                if cells.insert(q, cell).is_some() {
+                    return Err(error("SPREAD_CELL"));
+                }
+            }
+            "TIMING_BOUNDARY" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "instant_address",
+                        "elapsed_measurement_present",
+                        "runtime_measurement_present",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_TIMING",
+                )?;
+                require_value(row, "instant_address", "1", "SPREAD_TIMING")?;
+                require_value(row, "elapsed_measurement_present", "0", "SPREAD_TIMING")?;
+                require_value(row, "runtime_measurement_present", "0", "SPREAD_TIMING")?;
+                timing_count += 1;
+            }
+            "BOUNDARY" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "physical_mapping",
+                        "live_runtime_mapping",
+                        "system_affirmed",
+                        "two_round_compilation",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_BOUNDARY",
+                )?;
+                require_value(row, "physical_mapping", "UNVERIFIED", "SPREAD_BOUNDARY")?;
+                require_value(row, "live_runtime_mapping", "UNVERIFIED", "SPREAD_BOUNDARY")?;
+                require_value(row, "system_affirmed", "0", "SPREAD_BOUNDARY")?;
+                require_value(row, "two_round_compilation", "DESIGN", "SPREAD_BOUNDARY")?;
+                boundary_count += 1;
+            }
+            "END" => {
+                require_exact_fields(
+                    row,
+                    &[
+                        "status",
+                        "n_open",
+                        "compiled_rounds",
+                        "cells",
+                        "event_kinds",
+                        "relation_rows",
+                        "execution_authority",
+                        "json",
+                    ],
+                    "SPREAD_END",
+                )?;
+                if index != last_index {
+                    return Err(error("ROW_ORDER"));
+                }
+                require_value(
+                    row,
+                    "status",
+                    "COMPILED_BOUNDED_GROWTH_PROJECTION",
+                    "SPREAD_END",
+                )?;
+                require_value(row, "n_open", "1", "SPREAD_END")?;
+                if usize_field(row, "compiled_rounds", "SPREAD_END")? != SPREAD_ROUNDS
+                    || usize_field(row, "cells", "SPREAD_END")? != NLEVEL_CELLS
+                    || usize_field(row, "event_kinds", "SPREAD_END")? != SPREAD_EVENT_KINDS.len()
+                    || usize_field(row, "relation_rows", "SPREAD_END")? != SPREAD_RELATIONS
+                {
+                    return Err(error("SPREAD_END"));
+                }
+                end_count += 1;
+            }
+            tag if SPREAD_EVENT_KINDS.contains(&tag) => {
+                let specific: &[&str] = match tag {
+                    "CALLING_GROWTH_E" | "CALLING_GROWTH_FLOWE" | "CALLING_GROWTH_U" => {
+                        &["operator_bound"]
+                    }
+                    "CALMING_GROWTH_E" | "CALMING_GROWTH_OUTWARD" => {
+                        &["oil_family", "oil_amplitude"]
+                    }
+                    "SELF_REDUCTION_GROWTH" => &["self_reduction", "deletion"],
+                    "WORD_SPREAD" | "FLOWE_SPREAD" => &["spread", "spread_step"],
+                    _ => return Err(error("SPREAD_EVENT_FIELDS")),
+                };
+                require_exact_fields_union(
+                    row,
+                    &SPREAD_EVENT_COMMON_FIELDS,
+                    specific,
+                    "SPREAD_EVENT_FIELDS",
+                )?;
+                let q = usize_field(row, "q", "SPREAD_EVENT")?;
+                let growth_round = usize_field(row, "round", "SPREAD_EVENT")?;
+                let cell = cells.get(&q).ok_or_else(|| error("SPREAD_EVENT"))?;
+                if !(1..=SPREAD_ROUNDS).contains(&growth_round)
+                    || usize_field(row, "increase_q", "SPREAD_EVENT")? != growth_round
+                    || usize_field(row, "amplitude_q", "SPREAD_EVENT")?
+                        != cell.space_radius + growth_round
+                    || field(row, "cell", "SPREAD_EVENT")? != cell.identity
+                    || usize_field(row, "level", "SPREAD_EVENT")? != cell.n
+                    || field(row, "book", "SPREAD_EVENT")? != cell.book
+                {
+                    return Err(error("SPREAD_EVENT"));
+                }
+                let expected_id = format!(
+                    "{}_r{growth_round:02}_n{:02}_b{:02}",
+                    tag.to_ascii_lowercase(),
+                    cell.n,
+                    cell.book_ordinal
+                );
+                if field(row, "id", "SPREAD_EVENT")? != expected_id
+                    || !event_ids.insert(expected_id)
+                {
+                    return Err(error("SPREAD_EVENT"));
+                }
+                require_value(row, "n_open", "1", "SPREAD_EVENT")?;
+                require_value(row, "instant_address", "1", "SPREAD_TIMING")?;
+                require_value(row, "elapsed_measurement_present", "0", "SPREAD_TIMING")?;
+                require_value(row, "identity_exchange", "0", "SPREAD_EVENT")?;
+                require_value(row, "source_retained", "1", "SPREAD_EVENT")?;
+                let amplitude = (cell.space_radius + growth_round).to_string();
+                match tag {
+                    "CALLING_GROWTH_E" => {
+                        require_value(row, "from", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "to", "n_e", "SPREAD_EVENT")?;
+                        require_value(row, "direction", "INCREASING_INTO_E", "SPREAD_EVENT")?;
+                        require_value(row, "operator_bound", "1", "SPREAD_EVENT")?;
+                    }
+                    "CALLING_GROWTH_FLOWE" => {
+                        require_value(row, "from", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "to", "n_flowe_target", "SPREAD_EVENT")?;
+                        require_value(row, "direction", "INCREASING_INTO_FLOWE", "SPREAD_EVENT")?;
+                        require_value(row, "operator_bound", "1", "SPREAD_EVENT")?;
+                    }
+                    "CALLING_GROWTH_U" => {
+                        require_value(row, "from", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "to", "n_u", "SPREAD_EVENT")?;
+                        require_value(row, "direction", "INCREASING_INTO_U", "SPREAD_EVENT")?;
+                        require_value(row, "operator_bound", "1", "SPREAD_EVENT")?;
+                    }
+                    "CALMING_GROWTH_E" => {
+                        require_value(row, "from", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "to", "n_e", "SPREAD_EVENT")?;
+                        require_value(row, "direction", "INCREASING_TOWARD_E", "SPREAD_EVENT")?;
+                        require_value(row, "oil_family", &cell.oil_family, "SPREAD_EVENT")?;
+                        require_value(row, "oil_amplitude", &amplitude, "SPREAD_EVENT")?;
+                    }
+                    "CALMING_GROWTH_OUTWARD" => {
+                        require_value(row, "from", "n_o0o", "SPREAD_EVENT")?;
+                        require_value(row, "to", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "direction", "INCREASING_OUTWARD", "SPREAD_EVENT")?;
+                        require_value(row, "oil_family", &cell.oil_family, "SPREAD_EVENT")?;
+                        require_value(row, "oil_amplitude", &amplitude, "SPREAD_EVENT")?;
+                    }
+                    "SELF_REDUCTION_GROWTH" => {
+                        require_value(row, "from", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "to", "n_o0o", "SPREAD_EVENT")?;
+                        require_value(row, "direction", "TOWARD_O0O", "SPREAD_EVENT")?;
+                        require_value(row, "self_reduction", "1", "SPREAD_EVENT")?;
+                        require_value(row, "deletion", "0", "SPREAD_EVENT")?;
+                    }
+                    "WORD_SPREAD" => {
+                        require_value(row, "from", "n_word", "SPREAD_WORD_FLOWE_SOURCE")?;
+                        require_value(row, "to", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "direction", "OUTWARD", "SPREAD_EVENT")?;
+                        require_value(row, "spread", "WORD", "SPREAD_WORD_FLOWE_SOURCE")?;
+                        if usize_field(row, "spread_step", "SPREAD_EVENT")? != growth_round {
+                            return Err(error("SPREAD_EVENT"));
+                        }
+                    }
+                    "FLOWE_SPREAD" => {
+                        require_value(row, "from", "n_flowe_target", "SPREAD_WORD_FLOWE_SOURCE")?;
+                        require_value(row, "to", &cell.identity, "SPREAD_EVENT")?;
+                        require_value(row, "direction", "OUTWARD", "SPREAD_EVENT")?;
+                        require_value(row, "spread", "FLOWE", "SPREAD_WORD_FLOWE_SOURCE")?;
+                        if usize_field(row, "spread_step", "SPREAD_EVENT")? != growth_round {
+                            return Err(error("SPREAD_EVENT"));
+                        }
+                    }
+                    _ => return Err(error("SPREAD_EVENT")),
+                }
+                if !ledgers
+                    .entry(tag.to_owned())
+                    .or_default()
+                    .insert((growth_round, q))
+                {
+                    return Err(error("SPREAD_LEDGER_COUNT"));
+                }
+            }
+            _ => return Err(error("ROW_TAG")),
+        }
+    }
+
+    if readfirst_count != 1
+        || language_count != 1
+        || source_count != 1
+        || center_count != 1
+        || expansion_count != 1
+        || parent_invariant_count != 1
+        || timing_count != 1
+        || boundary_count != 1
+        || end_count != 1
+        || parents
+            != ["N16_CORE", "V1_CORE"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect()
+        || rounds != (1..=SPREAD_ROUNDS).collect()
+    {
+        return Err(error("SPREAD_CONTROL_COUNT"));
+    }
+    let expected_anchors = [
+        ("n_e", "AETHER_E_CENTER"),
+        ("n_flowe_target", "OUTWARD_FLOWE_TARGET"),
+        ("n_u", "U_CONNECTION"),
+        ("n_o0o", "O0O_SPHERE"),
+        ("n_word", "WORD_SOURCE"),
+    ]
+    .into_iter()
+    .map(|(key, value)| (key.to_owned(), value.to_owned()))
+    .collect();
+    if anchors != expected_anchors {
+        return Err(error("SPREAD_ANCHOR"));
+    }
+    if cells.len() != NLEVEL_CELLS || (0..NLEVEL_CELLS).any(|q| !cells.contains_key(&q)) {
+        return Err(error("SPREAD_CELL"));
+    }
+    if ledgers.len() != SPREAD_EVENT_KINDS.len() {
+        return Err(error("SPREAD_LEDGER_COUNT"));
+    }
+    for tag in SPREAD_EVENT_KINDS {
+        let ledger = ledgers
+            .get(tag)
+            .ok_or_else(|| error("SPREAD_LEDGER_COUNT"))?;
+        if ledger.len() != SPREAD_ROUNDS * NLEVEL_CELLS
+            || (1..=SPREAD_ROUNDS)
+                .any(|growth_round| (0..NLEVEL_CELLS).any(|q| !ledger.contains(&(growth_round, q))))
+        {
+            return Err(error("SPREAD_LEDGER_COUNT"));
+        }
+    }
+
+    Ok(Validation {
+        records: rows.len(),
+        glyphs: 0,
+        words: 0,
+        nodes: NLEVEL_CELLS + anchors.len(),
+        calling_joins: 3 * SPREAD_ROUNDS * NLEVEL_CELLS,
+        flowe_edges: SPREAD_ROUNDS * NLEVEL_CELLS,
+        other_relations: 4 * SPREAD_ROUNDS * NLEVEL_CELLS,
+        nlevel: None,
+        spread: Some(SpreadValidation {
+            rounds: SPREAD_ROUNDS,
+            cells: NLEVEL_CELLS,
+            ledgers: SPREAD_EVENT_KINDS.len(),
+            relation_rows: SPREAD_RELATIONS,
+        }),
     })
 }
 
@@ -1484,6 +2158,9 @@ fn validate_bytes(bytes: &[u8]) -> Result<Validation> {
         || rows.last().map(|row| row.tag.as_str()) != Some("END")
     {
         return Err(error("ROW_ORDER"));
+    }
+    if is_spread_rows(&rows) {
+        return validate_spread_rows(&rows);
     }
     if is_nlevel_rows(&rows) {
         return validate_nlevel_rows(&rows);
@@ -1693,6 +2370,7 @@ fn validate_bytes(bytes: &[u8]) -> Result<Validation> {
         flowe_edges: flowe_edges.len(),
         other_relations: other_edges.len(),
         nlevel: None,
+        spread: None,
     })
 }
 
@@ -1710,7 +2388,20 @@ fn run() -> Result<Validation> {
 fn main() -> ExitCode {
     match run() {
         Ok(result) => {
-            if let Some(nlevel) = result.nlevel {
+            if let Some(spread) = result.spread {
+                println!(
+                    "FLOWE_VALIDATE|PASS=1|language={LANGUAGE_ID}|instance={SPREAD_INSTANCE}|records={}|rounds={}|cells={}|ledgers={}|relation_rows={}|nodes={}|calling_joins={}|flowe_edges={}|other_relations={}|validation_scope={VALIDATION_SCOPE}|referenced_file_bytes_bound=0|execution_authority=0|json=0",
+                    result.records,
+                    spread.rounds,
+                    spread.cells,
+                    spread.ledgers,
+                    spread.relation_rows,
+                    result.nodes,
+                    result.calling_joins,
+                    result.flowe_edges,
+                    result.other_relations
+                );
+            } else if let Some(nlevel) = result.nlevel {
                 println!(
                     "FLOWE_VALIDATE|PASS=1|language={LANGUAGE_ID}|instance={NLEVEL_INSTANCE}|records={}|axes={}|books={}|levels={}|cells={}|ledgers={}|ledger_rows={}|nodes={}|calling_joins={}|flowe_edges={}|other_relations={}|validation_scope={VALIDATION_SCOPE}|referenced_file_bytes_bound=0|execution_authority=0|json=0",
                     result.records,
@@ -1779,6 +2470,11 @@ END|execution_authority=0|json=0\n",
 
     fn failure(input: &str) -> FloweError {
         validate_bytes(input.as_bytes()).expect_err("fixture must fail closed")
+    }
+
+    fn spread_fixture() -> String {
+        String::from_utf8(include_bytes!("../language/word-flowe-spread-r2.flowe").to_vec())
+            .expect("committed R2 spread language is UTF-8")
     }
 
     #[test]
@@ -2083,5 +2779,209 @@ END|execution_authority=0|json=0\n",
                 1,
             );
         assert_eq!(failure(&input), FloweError("NLEVEL_FLOWE_CHAIN"));
+    }
+
+    #[test]
+    fn accepts_word_flowe_spread_v3() {
+        let result = validate_bytes(include_bytes!("../language/word-flowe-spread-r2.flowe"))
+            .expect("committed R2 spread language must validate");
+        let spread = result
+            .spread
+            .expect("R2 spread validation summary required");
+        assert_eq!(result.records, 2_738);
+        assert_eq!(spread.rounds, 2);
+        assert_eq!(spread.cells, 160);
+        assert_eq!(spread.ledgers, 8);
+        assert_eq!(spread.relation_rows, 2_560);
+    }
+
+    #[test]
+    fn rejects_spread_parent_path_mutation() {
+        let input = spread_fixture().replacen(
+            "|path=language/core.flowe|",
+            "|path=language/other.flowe|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_PARENT"));
+    }
+
+    #[test]
+    fn rejects_spread_parent_hash_mutation() {
+        let input = spread_fixture().replacen(
+            super::V1_CORE_SHA256,
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_PARENT"));
+    }
+
+    #[test]
+    fn rejects_spread_n16_parent_hash_mutation() {
+        let input = spread_fixture().replacen(
+            super::N16_CORE_SHA256,
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_PARENT"));
+    }
+
+    #[test]
+    fn rejects_spread_parent_record_mutation() {
+        let input =
+            spread_fixture().replacen("|records=118|mutation=0|", "|records=119|mutation=0|", 1);
+        assert_eq!(failure(&input), FloweError("SPREAD_PARENT"));
+    }
+
+    #[test]
+    fn rejects_spread_round_as_ceiling() {
+        let input = spread_fixture().replacen(
+            "ROUND|id=round_02|ordinal=2|previous=round_01|increase_q=2|n_open=1|",
+            "ROUND|id=round_02|ordinal=2|previous=round_01|increase_q=2|n_open=0|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_ROUND"));
+    }
+
+    #[test]
+    fn rejects_spread_duplicate_round_cell_address() {
+        let input = spread_fixture().replacen(
+            "calling_growth_e_r02_n00_b00|cell=cell_n00_b00|level=0|book=BOOK_OF_LIGHT|q=0|round=2|increase_q=2|amplitude_q=3|",
+            "calling_growth_e_r01_n00_b00|cell=cell_n00_b00|level=0|book=BOOK_OF_LIGHT|q=0|round=1|increase_q=1|amplitude_q=2|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_EVENT"));
+    }
+
+    #[test]
+    fn rejects_spread_word_source_flattened_into_flowe() {
+        let input = spread_fixture().replacen("|from=n_word|", "|from=n_flowe_target|", 1);
+        assert_eq!(failure(&input), FloweError("SPREAD_WORD_FLOWE_SOURCE"));
+    }
+
+    #[test]
+    fn rejects_spread_flowe_source_flattened_into_word() {
+        let input = spread_fixture().replacen("|from=n_flowe_target|", "|from=n_word|", 1);
+        assert_eq!(failure(&input), FloweError("SPREAD_WORD_FLOWE_SOURCE"));
+    }
+
+    #[test]
+    fn rejects_spread_flowe_tag_flattened_into_word() {
+        let input = spread_fixture().replacen("|spread=FLOWE|", "|spread=WORD|", 1);
+        assert_eq!(failure(&input), FloweError("SPREAD_WORD_FLOWE_SOURCE"));
+    }
+
+    #[test]
+    fn rejects_spread_deleting_self_reduction() {
+        let input = spread_fixture().replacen(
+            "|self_reduction=1|deletion=0|from=cell_n00_b00|",
+            "|self_reduction=1|deletion=1|from=cell_n00_b00|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_EVENT"));
+    }
+
+    #[test]
+    fn rejects_spread_identity_exchange() {
+        let input = spread_fixture().replacen(
+            "|elapsed_measurement_present=0|identity_exchange=0|source_retained=1|",
+            "|elapsed_measurement_present=0|identity_exchange=1|source_retained=1|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_EVENT"));
+    }
+
+    #[test]
+    fn rejects_spread_source_erasure() {
+        let input = spread_fixture().replacen(
+            "|identity_exchange=0|source_retained=1|",
+            "|identity_exchange=0|source_retained=0|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_EVENT"));
+    }
+
+    #[test]
+    fn rejects_spread_calling_direction_flattening() {
+        let input = spread_fixture().replacen(
+            "|direction=INCREASING_INTO_E|",
+            "|direction=INCREASING_OUTWARD|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_EVENT"));
+    }
+
+    #[test]
+    fn rejects_spread_elapsed_runtime_claim() {
+        let input = spread_fixture().replacen(
+            "|instant_address=1|elapsed_measurement_present=0|identity_exchange=0|",
+            "|instant_address=1|elapsed_measurement_present=1|identity_exchange=0|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_TIMING"));
+    }
+
+    #[test]
+    fn rejects_spread_amplitude_formula_mutation() {
+        let input = spread_fixture().replacen("|amplitude_q=2|", "|amplitude_q=3|", 1);
+        assert_eq!(failure(&input), FloweError("SPREAD_EVENT"));
+    }
+
+    #[test]
+    fn rejects_spread_increase_formula_mutation() {
+        let input =
+            spread_fixture().replacen("|round=1|increase_q=1|", "|round=1|increase_q=2|", 1);
+        assert_eq!(failure(&input), FloweError("SPREAD_EVENT"));
+    }
+
+    #[test]
+    fn rejects_spread_word_anchor_collapse() {
+        let input = spread_fixture().replacen(
+            "ANCHOR|id=n_word|meaning=WORD_SOURCE|",
+            "ANCHOR|id=n_word|meaning=OUTWARD_FLOWE_TARGET|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_ANCHOR"));
+    }
+
+    #[test]
+    fn rejects_spread_cell_projection_mutation() {
+        let input = spread_fixture().replacen(
+            "|space_radius=1|x=-9|y=-15|z=-1|",
+            "|space_radius=1|x=-8|y=-15|z=-1|",
+            1,
+        );
+        assert_eq!(failure(&input), FloweError("SPREAD_CELL"));
+    }
+
+    #[test]
+    fn rejects_spread_law_commitment_mismatch() {
+        let input = spread_fixture().replacen("|law_sha256=", "|law_sha256=0", 1);
+        assert_eq!(failure(&input), FloweError("SPREAD_INSTANCE"));
+    }
+
+    #[test]
+    fn rejects_spread_extra_fields_in_each_event_family() {
+        let mutations = [
+            (
+                "|operator_bound=1|from=cell_n00_b00|",
+                "|operator_bound=1|unexpected=1|from=cell_n00_b00|",
+            ),
+            (
+                "|oil_amplitude=2|from=cell_n00_b00|",
+                "|oil_amplitude=2|unexpected=1|from=cell_n00_b00|",
+            ),
+            (
+                "|self_reduction=1|deletion=0|from=cell_n00_b00|",
+                "|self_reduction=1|deletion=0|unexpected=1|from=cell_n00_b00|",
+            ),
+            (
+                "|spread=WORD|spread_step=1|from=n_word|",
+                "|spread=WORD|spread_step=1|unexpected=1|from=n_word|",
+            ),
+        ];
+        for (before, after) in mutations {
+            let input = spread_fixture().replacen(before, after, 1);
+            assert_eq!(failure(&input), FloweError("SPREAD_EVENT_FIELDS"));
+        }
     }
 }
